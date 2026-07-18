@@ -1,0 +1,16 @@
+{
+  "name": "Sky Island Obby",
+  "short_name": "Sky Obby",
+  "description": "A blocky 3D obstacle-course adventure in the sky. Run, jump, collect coins, unlock cool gear!",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#6ec2f7",
+  "theme_color": "#6ec2f7",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
