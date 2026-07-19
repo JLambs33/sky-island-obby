@@ -35,6 +35,7 @@ function makeHost(): GameHost & { respawns: number } {
     courseComplete() {},
     enterCourse() {},
     openShop() {},
+    openCustomizer() {},
     respawned() {
       this.respawns++;
     },
@@ -133,6 +134,10 @@ describe("Course respawn safety", () => {
       collectCoin() {},
       bounce() {},
       completeCourse() {},
+      push() {},
+      boost() {},
+      updraft() {},
+      teleportPlayer() {},
     };
     const cp = new Checkpoint([0, 0, 0]);
     const box = { cx: 0, cy: 1.1, cz: 0, hx: 0.4, hy: 1.1, hz: 0.4 };

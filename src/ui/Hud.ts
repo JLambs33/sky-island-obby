@@ -13,9 +13,11 @@ export class Hud {
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private lastTimerText = "";
 
+  private readonly musicBtn: HTMLButtonElement;
+
   constructor(
     ui: HTMLElement,
-    handlers: { onHome: () => void; onToggleMute: () => boolean },
+    handlers: { onHome: () => void; onToggleMute: () => boolean; onToggleMusic: () => boolean },
   ) {
     this.coinsEl = document.createElement("div");
     this.coinsEl.className = "hud-pill";
@@ -46,7 +48,13 @@ export class Hud {
       const muted = handlers.onToggleMute();
       this.muteBtn.textContent = muted ? "🔇" : "🔊";
     });
-    btns.append(this.homeBtn, this.muteBtn);
+    this.musicBtn = document.createElement("button");
+    this.musicBtn.className = "round-btn";
+    this.musicBtn.textContent = "🎵";
+    this.musicBtn.addEventListener("click", () => {
+      this.setMusicOn(handlers.onToggleMusic());
+    });
+    btns.append(this.homeBtn, this.musicBtn, this.muteBtn);
     ui.appendChild(btns);
 
     this.toastEl = document.createElement("div");
@@ -62,6 +70,10 @@ export class Hud {
 
   setMuted(muted: boolean): void {
     this.muteBtn.textContent = muted ? "🔇" : "🔊";
+  }
+
+  setMusicOn(on: boolean): void {
+    this.musicBtn.classList.toggle("off", !on);
   }
 
   /** Course mode: show name + live timer + home button. */
