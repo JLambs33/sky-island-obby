@@ -31,10 +31,23 @@ export interface SkinDef {
   name: string;
   price: number;
   rarity: Rarity;
-  head: number;
   torso: number;
   arms: number;
   legs: number;
+}
+
+/** Literal skin tone, a free body-customization option independent of clothing. */
+export interface SkinToneDef {
+  id: string;
+  name: string;
+  color: number;
+}
+
+/** Character height, a free body-customization option independent of clothing. */
+export interface HeightDef {
+  id: string;
+  name: string;
+  scale: number;
 }
 
 export interface HatDef {
@@ -73,22 +86,47 @@ export interface AuraDef {
 // ---------- Skins ----------
 
 export const SKINS: SkinDef[] = [
-  { id: "classic", name: "Classic", price: 0, rarity: "common", head: 0xffddb0, torso: 0xe84c3c, arms: 0xffddb0, legs: 0x2f4f8f },
-  { id: "ocean", name: "Ocean Hero", price: 25, rarity: "common", head: 0xffddb0, torso: 0x1abc9c, arms: 0x14856d, legs: 0x0e3a5d },
-  { id: "forest", name: "Forest Scout", price: 50, rarity: "common", head: 0xffddb0, torso: 0x58c04d, arms: 0x3d8a36, legs: 0x5b4326 },
-  { id: "sunny", name: "Sunny Day", price: 60, rarity: "common", head: 0xffe4c9, torso: 0xffc93c, arms: 0xff9a3c, legs: 0xe8703a },
-  { id: "bubblegum", name: "Bubblegum", price: 80, rarity: "rare", head: 0xffe4c9, torso: 0xff6fae, arms: 0xff9ecb, legs: 0xb04a8f },
-  { id: "mint", name: "Mint Chip", price: 100, rarity: "rare", head: 0xfff2df, torso: 0x8ee6c2, arms: 0x5bc9a0, legs: 0x4d3a2a },
-  { id: "berry", name: "Berry Blast", price: 120, rarity: "rare", head: 0xffe4c9, torso: 0x8e44ad, arms: 0xa569bd, legs: 0x4a235a },
-  { id: "midnight", name: "Midnight Ninja", price: 150, rarity: "rare", head: 0xd9c9ff, torso: 0x2c2440, arms: 0x413566, legs: 0x1a1530 },
-  { id: "candyfloss", name: "Candy Floss", price: 200, rarity: "epic", head: 0xfff0f5, torso: 0xf8a5d8, arms: 0xa5d8f8, legs: 0xd8a5f8 },
-  { id: "robot", name: "Robo-Kid", price: 250, rarity: "epic", head: 0xc0c8d0, torso: 0x7f8c9b, arms: 0x5d6a77, legs: 0x3e4750 },
-  { id: "lavaknight", name: "Lava Knight", price: 350, rarity: "epic", head: 0xffb27a, torso: 0x8b1e12, arms: 0xd94f2b, legs: 0x3a1008 },
-  { id: "frostmage", name: "Frost Mage", price: 400, rarity: "epic", head: 0xe8f8ff, torso: 0x7ec3ef, arms: 0xbfe8ff, legs: 0x2b6ea3 },
-  { id: "golden", name: "Golden Champ", price: 500, rarity: "legendary", head: 0xffe08a, torso: 0xf1b90c, arms: 0xd9a509, legs: 0xb8860b },
-  { id: "galaxy", name: "Galaxy Runner", price: 900, rarity: "legendary", head: 0xcdb8ff, torso: 0x1b1464, arms: 0x5e2b97, legs: 0x0d0a33 },
-  { id: "rainbowskin", name: "Rainbow Legend", price: 1500, rarity: "legendary", head: 0xfff3b0, torso: 0xff5b5b, arms: 0x5ee87a, legs: 0x53b9ff },
+  { id: "classic", name: "Classic", price: 0, rarity: "common", torso: 0xe84c3c, arms: 0xffddb0, legs: 0x2f4f8f },
+  { id: "ocean", name: "Ocean Hero", price: 200, rarity: "common", torso: 0x1abc9c, arms: 0x14856d, legs: 0x0e3a5d },
+  { id: "forest", name: "Forest Scout", price: 300, rarity: "common", torso: 0x58c04d, arms: 0x3d8a36, legs: 0x5b4326 },
+  { id: "sunny", name: "Sunny Day", price: 350, rarity: "common", torso: 0xffc93c, arms: 0xff9a3c, legs: 0xe8703a },
+  { id: "bubblegum", name: "Bubblegum", price: 550, rarity: "rare", torso: 0xff6fae, arms: 0xff9ecb, legs: 0xb04a8f },
+  { id: "mint", name: "Mint Chip", price: 650, rarity: "rare", torso: 0x8ee6c2, arms: 0x5bc9a0, legs: 0x4d3a2a },
+  { id: "berry", name: "Berry Blast", price: 750, rarity: "rare", torso: 0x8e44ad, arms: 0xa569bd, legs: 0x4a235a },
+  { id: "midnight", name: "Midnight Ninja", price: 900, rarity: "rare", torso: 0x2c2440, arms: 0x413566, legs: 0x1a1530 },
+  { id: "candyfloss", name: "Candy Floss", price: 1500, rarity: "epic", torso: 0xf8a5d8, arms: 0xa5d8f8, legs: 0xd8a5f8 },
+  { id: "robot", name: "Robo-Kid", price: 1800, rarity: "epic", torso: 0x7f8c9b, arms: 0x5d6a77, legs: 0x3e4750 },
+  { id: "lavaknight", name: "Lava Knight", price: 2200, rarity: "epic", torso: 0x8b1e12, arms: 0xd94f2b, legs: 0x3a1008 },
+  { id: "frostmage", name: "Frost Mage", price: 2600, rarity: "epic", torso: 0x7ec3ef, arms: 0xbfe8ff, legs: 0x2b6ea3 },
+  { id: "golden", name: "Golden Champ", price: 4000, rarity: "legendary", torso: 0xf1b90c, arms: 0xd9a509, legs: 0xb8860b },
+  { id: "galaxy", name: "Galaxy Runner", price: 6000, rarity: "legendary", torso: 0x1b1464, arms: 0x5e2b97, legs: 0x0d0a33 },
+  { id: "rainbowskin", name: "Rainbow Legend", price: 9000, rarity: "legendary", torso: 0xff5b5b, arms: 0x5ee87a, legs: 0x53b9ff },
 ];
+
+// ---------- Skin tones & height (free body customization) ----------
+
+export const SKIN_TONES: SkinToneDef[] = [
+  { id: "tone-1", name: "Fair", color: 0xffe0c2 },
+  { id: "tone-2", name: "Light", color: 0xffddb0 },
+  { id: "tone-3", name: "Tan", color: 0xe8b382 },
+  { id: "tone-4", name: "Golden", color: 0xd9995f },
+  { id: "tone-5", name: "Brown", color: 0xa9714a },
+  { id: "tone-6", name: "Deep Brown", color: 0x7a4a2e },
+  { id: "tone-7", name: "Rich Ebony", color: 0x4a2e1c },
+  { id: "tone-8", name: "Cool Gray", color: 0xc0c8d0 },
+  { id: "tone-9", name: "Minty Green", color: 0xa0e6c0 },
+  { id: "tone-10", name: "Berry Purple", color: 0xc9a0e6 },
+];
+
+export const HEIGHTS: HeightDef[] = [
+  { id: "height-small", name: "Small", scale: 0.85 },
+  { id: "height-medium", name: "Medium", scale: 1.0 },
+  { id: "height-tall", name: "Tall", scale: 1.15 },
+];
+
+export const skinToneById = (id: string): SkinToneDef =>
+  SKIN_TONES.find((t) => t.id === id) ?? SKIN_TONES[1];
+export const heightById = (id: string): HeightDef => HEIGHTS.find((h) => h.id === id) ?? HEIGHTS[1];
 
 // ---------- Hats ----------
 
@@ -210,47 +248,47 @@ function buildCrown(): Object3D {
 }
 
 export const HATS: HatDef[] = [
-  { id: "cap", name: "Cool Cap", price: 40, rarity: "common", color: 0xe8432c, build: buildCap },
-  { id: "beanie", name: "Pom Beanie", price: 60, rarity: "common", color: 0x3d8ac4, build: buildBeanie },
-  { id: "party", name: "Party Hat", price: 80, rarity: "common", color: 0x2bb3f3, build: buildPartyHat },
-  { id: "headphones", name: "Headphones", price: 120, rarity: "rare", color: 0x333a45, build: buildHeadphones },
-  { id: "tophat", name: "Fancy Top Hat", price: 150, rarity: "rare", color: 0x2b2b33, build: buildTopHat },
-  { id: "wizard", name: "Wizard Hat", price: 150, rarity: "rare", color: 0x7a3fc1, build: buildWizardHat },
-  { id: "viking", name: "Viking Helm", price: 250, rarity: "epic", color: 0x8d99ae, build: buildViking },
-  { id: "pirate", name: "Pirate Hat", price: 300, rarity: "epic", color: 0x26262e, build: buildPirate },
-  { id: "crown", name: "Royal Crown", price: 400, rarity: "legendary", color: 0xf1b90c, build: buildCrown },
-  { id: "halo", name: "Angel Halo", price: 800, rarity: "legendary", color: 0xffe66b, build: buildHalo },
+  { id: "cap", name: "Cool Cap", price: 300, rarity: "common", color: 0xe8432c, build: buildCap },
+  { id: "beanie", name: "Pom Beanie", price: 400, rarity: "common", color: 0x3d8ac4, build: buildBeanie },
+  { id: "party", name: "Party Hat", price: 500, rarity: "common", color: 0x2bb3f3, build: buildPartyHat },
+  { id: "headphones", name: "Headphones", price: 800, rarity: "rare", color: 0x333a45, build: buildHeadphones },
+  { id: "tophat", name: "Fancy Top Hat", price: 1000, rarity: "rare", color: 0x2b2b33, build: buildTopHat },
+  { id: "wizard", name: "Wizard Hat", price: 1000, rarity: "rare", color: 0x7a3fc1, build: buildWizardHat },
+  { id: "viking", name: "Viking Helm", price: 1800, rarity: "epic", color: 0x8d99ae, build: buildViking },
+  { id: "pirate", name: "Pirate Hat", price: 2200, rarity: "epic", color: 0x26262e, build: buildPirate },
+  { id: "crown", name: "Royal Crown", price: 5000, rarity: "legendary", color: 0xf1b90c, build: buildCrown },
+  { id: "halo", name: "Angel Halo", price: 8000, rarity: "legendary", color: 0xffe66b, build: buildHalo },
 ];
 
 // ---------- Trails ----------
 
 export const TRAILS: TrailDef[] = [
-  { id: "sparkle", name: "Sparkles", price: 60, rarity: "common", colors: [0xfff7c9, 0xffe95e, 0xffffff] },
-  { id: "bubbles", name: "Ocean Bubbles", price: 90, rarity: "common", colors: [0x9fd9ff, 0x53b9ff, 0xe0f4ff] },
-  { id: "fire", name: "Fire Trail", price: 120, rarity: "rare", colors: [0xff5722, 0xffa000, 0xffd640] },
-  { id: "slime", name: "Slime Drips", price: 150, rarity: "rare", colors: [0x5ee87a, 0x2fbf4e, 0xb6ff9e] },
-  { id: "magic", name: "Purple Magic", price: 200, rarity: "epic", colors: [0xb46fff, 0x8e44ad, 0xe8ccff] },
-  { id: "rainbow", name: "Rainbow", price: 250, rarity: "epic", colors: [0xff5b5b, 0xffb040, 0xfff05e, 0x5ee87a, 0x53b9ff, 0xb46fff] },
-  { id: "gold", name: "Golden Dust", price: 600, rarity: "legendary", colors: [0xffd640, 0xf1b90c, 0xfff3b0] },
+  { id: "sparkle", name: "Sparkles", price: 400, rarity: "common", colors: [0xfff7c9, 0xffe95e, 0xffffff] },
+  { id: "bubbles", name: "Ocean Bubbles", price: 550, rarity: "common", colors: [0x9fd9ff, 0x53b9ff, 0xe0f4ff] },
+  { id: "fire", name: "Fire Trail", price: 800, rarity: "rare", colors: [0xff5722, 0xffa000, 0xffd640] },
+  { id: "slime", name: "Slime Drips", price: 1000, rarity: "rare", colors: [0x5ee87a, 0x2fbf4e, 0xb6ff9e] },
+  { id: "magic", name: "Purple Magic", price: 1600, rarity: "epic", colors: [0xb46fff, 0x8e44ad, 0xe8ccff] },
+  { id: "rainbow", name: "Rainbow", price: 2000, rarity: "epic", colors: [0xff5b5b, 0xffb040, 0xfff05e, 0x5ee87a, 0x53b9ff, 0xb46fff] },
+  { id: "gold", name: "Golden Dust", price: 6000, rarity: "legendary", colors: [0xffd640, 0xf1b90c, 0xfff3b0] },
 ];
 
 // ---------- Faces ----------
 
 export const FACES: FaceDef[] = [
   { id: "face-classic", name: "Classic Smile", price: 0, rarity: "common" },
-  { id: "face-happy", name: "Big Grin", price: 30, rarity: "common" },
-  { id: "face-wink", name: "Winky", price: 60, rarity: "rare" },
-  { id: "face-wow", name: "Wow!", price: 90, rarity: "rare" },
-  { id: "face-cool", name: "Cool Shades", price: 200, rarity: "epic" },
+  { id: "face-happy", name: "Big Grin", price: 250, rarity: "common" },
+  { id: "face-wink", name: "Winky", price: 500, rarity: "rare" },
+  { id: "face-wow", name: "Wow!", price: 700, rarity: "rare" },
+  { id: "face-cool", name: "Cool Shades", price: 1800, rarity: "epic" },
 ];
 
 // ---------- Auras ----------
 
 export const AURAS: AuraDef[] = [
-  { id: "aura-spark", name: "Spark Ring", price: 150, rarity: "rare", colors: [0xfff7c9, 0xffe95e] },
-  { id: "aura-frost", name: "Frost Orbit", price: 250, rarity: "epic", colors: [0x9fd9ff, 0xe0f4ff, 0x53b9ff] },
-  { id: "aura-ember", name: "Ember Storm", price: 400, rarity: "epic", colors: [0xff5722, 0xffa000] },
-  { id: "aura-royal", name: "Royal Radiance", price: 1000, rarity: "legendary", colors: [0xffd640, 0xfff3b0, 0xf1b90c] },
+  { id: "aura-spark", name: "Spark Ring", price: 1000, rarity: "rare", colors: [0xfff7c9, 0xffe95e] },
+  { id: "aura-frost", name: "Frost Orbit", price: 2000, rarity: "epic", colors: [0x9fd9ff, 0xe0f4ff, 0x53b9ff] },
+  { id: "aura-ember", name: "Ember Storm", price: 3000, rarity: "epic", colors: [0xff5722, 0xffa000] },
+  { id: "aura-royal", name: "Royal Radiance", price: 8000, rarity: "legendary", colors: [0xffd640, 0xfff3b0, 0xf1b90c] },
 ];
 
 export const skinById = (id: string): SkinDef => SKINS.find((s) => s.id === id) ?? SKINS[0];
@@ -330,9 +368,17 @@ function buildFace(faceId: string, head: Group): void {
   }
 }
 
-export function buildAvatar(skinId: string, hatId: string | null, faceId = "face-classic"): AvatarRig {
+export function buildAvatar(
+  skinId: string,
+  hatId: string | null,
+  faceId = "face-classic",
+  skinToneId = "tone-2",
+  heightScale = 1,
+): AvatarRig {
   const skin = skinById(skinId);
+  const tone = skinToneById(skinToneId);
   const group = new Group();
+  group.scale.setScalar(heightScale);
 
   const leftLeg = limb(0.3, 0.8, 0.3, skin.legs);
   leftLeg.position.set(-0.18, 0.8, 0);
@@ -349,7 +395,7 @@ export function buildAvatar(skinId: string, hatId: string | null, faceId = "face
 
   const head = new Group();
   head.position.y = 1.9;
-  const skull = new Mesh(new BoxGeometry(0.6, 0.55, 0.6), lambert(skin.head));
+  const skull = new Mesh(new BoxGeometry(0.6, 0.55, 0.6), lambert(tone.color));
   head.add(skull);
   buildFace(faceId, head);
 

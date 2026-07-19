@@ -87,16 +87,18 @@ export class Player {
     this.root.add(this.rig.group, this.trail.points, this.aura.points);
   }
 
-  /** Rebuild the avatar for the equipped cosmetics. */
+  /** Rebuild the avatar for the equipped cosmetics + body customization. */
   applyCosmetics(
     skinId: string,
     hatId: string | null,
     trailId: string | null,
     faceId = "face-classic",
     auraId: string | null = null,
+    skinToneId = "tone-2",
+    heightScale = 1,
   ): void {
     this.root.remove(this.rig.group);
-    this.rig = buildAvatar(skinId, hatId, faceId);
+    this.rig = buildAvatar(skinId, hatId, faceId, skinToneId, heightScale);
     this.root.add(this.rig.group);
     this.trail.setDef(trailById(trailId));
     this.aura.setDef(auraById(auraId));

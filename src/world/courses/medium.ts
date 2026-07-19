@@ -3,7 +3,7 @@
  * narrow beams, and the first lava. Gaps up to 2.5.
  */
 
-import type { CourseDef } from "./defs";
+import { zigzagBeam, type CourseDef } from "./defs";
 
 const CLOUD = 0xeef4fb;
 const SKY = 0x7ec3ef;
@@ -31,11 +31,11 @@ export const MEDIUM: CourseDef = {
     { type: "platform", pos: [0, 4.8, -30], size: [4, 0.4, 4], color: CLOUD },
     { type: "coin", pos: [0, 5.9, -30] },
 
-    // Narrow beam hops.
-    { type: "platform", pos: [1.5, 4.8, -35], size: [2, 0.4, 2], color: CLOUD },
-    { type: "coin", pos: [1.5, 5.9, -35] },
-    { type: "platform", pos: [-1.5, 4.8, -40], size: [2, 0.4, 2], color: CLOUD },
-    { type: "coin", pos: [-1.5, 5.9, -40] },
+    // Curvy balance beam — a continuous winding walk, no jumping needed if
+    // you keep your footing.
+    ...zigzagBeam(0, -33, 4.8, 5, 4, 1.4, 1.2),
+    { type: "coin", pos: [-1.4, 5.9, -33] },
+    { type: "coin", pos: [-1.4, 5.9, -44.2] },
     { type: "platform", pos: [0, 4.8, -46], size: [5, 0.4, 5], color: CLOUD },
     { type: "checkpoint", pos: [2, 5, -46] },
 

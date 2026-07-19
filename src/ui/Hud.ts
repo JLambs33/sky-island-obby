@@ -17,7 +17,12 @@ export class Hud {
 
   constructor(
     ui: HTMLElement,
-    handlers: { onHome: () => void; onToggleMute: () => boolean; onToggleMusic: () => boolean },
+    handlers: {
+      onHome: () => void;
+      onToggleMute: () => boolean;
+      onToggleMusic: () => boolean;
+      onSettings: () => void;
+    },
   ) {
     this.coinsEl = document.createElement("div");
     this.coinsEl.className = "hud-pill";
@@ -54,7 +59,11 @@ export class Hud {
     this.musicBtn.addEventListener("click", () => {
       this.setMusicOn(handlers.onToggleMusic());
     });
-    btns.append(this.homeBtn, this.musicBtn, this.muteBtn);
+    const settingsBtn = document.createElement("button");
+    settingsBtn.className = "round-btn";
+    settingsBtn.textContent = "⚙️";
+    settingsBtn.addEventListener("click", handlers.onSettings);
+    btns.append(this.homeBtn, this.musicBtn, this.muteBtn, settingsBtn);
     ui.appendChild(btns);
 
     this.toastEl = document.createElement("div");

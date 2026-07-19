@@ -21,6 +21,7 @@ import { GEARS } from "../world/courses/gears";
 import { VOLCANO } from "../world/courses/volcano";
 import type { CourseDef, CourseId } from "../world/courses/defs";
 import type { GameHost } from "../world/types";
+import { heightById } from "../world/cosmetics";
 import { SaveManager } from "../save/SaveManager";
 import { Sfx, type SfxName } from "../audio/Sfx";
 import { Music } from "../audio/Music";
@@ -29,6 +30,7 @@ import { TouchControls } from "../ui/TouchControls";
 import { Menu } from "../ui/Menu";
 import { Shop } from "../ui/Shop";
 import { Customizer } from "../ui/Customizer";
+import { Settings } from "../ui/Settings";
 
 const COURSES: Record<CourseId, CourseDef> = {
   easy: EASY,
@@ -78,12 +80,14 @@ export class Game implements GameHost {
   private readonly touchControls: TouchControls;
   private readonly shop: Shop;
   private readonly customizer: Customizer;
+  private readonly settings: Settings;
   private readonly music = new Music();
 
   private hub: Hub | null = null;
   private course: Course | null = null;
   private shopOpen = false;
   private customizerOpen = false;
+  private settingsOpen = false;
   private returnTimer = 0;
 
   constructor(
@@ -115,6 +119,7 @@ export class Game implements GameHost {
         this.syncMusic();
         return on;
       },
+      onSettings: () => this.openSettings(),
     });
     this.hud.setMuted(this.sfx.muted);
     this.hud.setMusicOn(this.save.data.musicOn);
@@ -135,6 +140,21 @@ export class Game implements GameHost {
         this.followCam.snap(this.player.pos, this.followCam.yaw);
       },
       onChanged: () => this.applyCosmetics(),
+      sfxPlay: (name) => this.sfx.play(name),
+    });
+    this.settings = new Settings(ui, this.save, {
+      onClose: () => {
+        this.settingsOpen = false;
+        this.input.controller.setEnabled(true);
+      },
+      onRestored: () => {
+        this.sfx.muted = this.save.data.muted;
+        this.hud.setMuted(this.sfx.muted);
+        this.hud.setMusicOn(this.save.data.musicOn);
+        this.syncMusic();
+        this.hud.setCoins(this.save.data.coins);
+        this.applyCosmetics();
+      },
       sfxPlay: (name) => this.sfx.play(name),
     });
     new Menu(ui, () => {
@@ -166,7 +186,7 @@ export class Game implements GameHost {
 
   private step(dt: number): void {
     this.env.update(dt);
-    if (this.state !== "menu" && !this.shopOpen) {
+    if (this.state !== "menu" && !this.shopOpen && !this.settingsOpen) {
       if (this.state === "hub" && this.hub) {
         this.hub.step(dt, this.input.controller, this.followCam.yaw, this.player);
       } else if (this.state === "course" && this.course) {
@@ -299,7 +319,7 @@ export class Game implements GameHost {
   }
 
   openShop(): void {
-    if (this.state !== "hub" || this.shopOpen || this.customizerOpen) return;
+    if (this.state !== "hub" || this.shopOpen || this.customizerOpen || this.settingsOpen) return;
     this.shopOpen = true;
     this.input.controller.setEnabled(false);
     this.sfx.play("click");
@@ -307,7 +327,14 @@ export class Game implements GameHost {
   }
 
   openCustomizer(): void {
-    if (this.state !== "hub" || this.shopOpen || this.customizerOpen || !this.hub) return;
+    if (
+      this.state !== "hub" ||
+      this.shopOpen ||
+      this.customizerOpen ||
+      this.settingsOpen ||
+      !this.hub
+    )
+      return;
     this.customizerOpen = true;
     this.input.controller.setEnabled(false);
     this.sfx.play("click");
@@ -316,6 +343,14 @@ export class Game implements GameHost {
     this.player.teleport(spot.x, spot.y, spot.z, 0);
     this.followCam.snap(this.player.pos, 0);
     this.customizer.open();
+  }
+
+  openSettings(): void {
+    if (this.shopOpen || this.customizerOpen || this.settingsOpen) return;
+    this.settingsOpen = true;
+    this.input.controller.setEnabled(false);
+    this.sfx.play("click");
+    this.settings.open();
   }
 
   private syncMusic(): void {
@@ -334,6 +369,7 @@ export class Game implements GameHost {
 
   private applyCosmetics(): void {
     const e = this.save.data.equipped;
-    this.player.applyCosmetics(e.skin, e.hat, e.trail, e.face, e.aura);
+    const b = this.save.data.body;
+    this.player.applyCosmetics(e.skin, e.hat, e.trail, e.face, e.aura, b.skinTone, heightById(b.height).scale);
   }
 }

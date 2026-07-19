@@ -3,12 +3,16 @@
  * logic unit-tests in node without a browser. Every mutation persists
  * immediately; there is nothing to lose on a crash or tab kill.
  *
- * v2 adds face/aura cosmetic slots, per-course completion counts (progression
- * unlocks), all-coins stars, and the music toggle. v1 saves migrate in place.
+ * v2 added face/aura cosmetic slots, per-course completion counts
+ * (progression unlocks), all-coins stars, and the music toggle. v3 adds free
+ * body customization (skin tone, height) independent of shop purchases, plus
+ * a portable backup code (exportCode/importCode) since there's no backend —
+ * clearing browser storage would otherwise erase progress permanently. Older
+ * saves migrate in place.
  */
 
 export interface SaveData {
-  version: 2;
+  version: 3;
   coins: number;
   owned: string[];
   equipped: {
@@ -17,6 +21,11 @@ export interface SaveData {
     trail: string | null;
     face: string;
     aura: string | null;
+  };
+  /** Free body customization — not gated by ownership. */
+  body: {
+    skinTone: string;
+    height: string;
   };
   /** Best completion time in seconds, per course id. */
   bestTimes: Record<string, number>;
@@ -29,12 +38,14 @@ export interface SaveData {
 }
 
 const KEY = "sky-obby-save";
+const CODE_PREFIX = "SKYOBBY1:";
 
 const defaults = (): SaveData => ({
-  version: 2,
+  version: 3,
   coins: 0,
   owned: ["classic", "face-classic"],
   equipped: { skin: "classic", hat: null, trail: null, face: "face-classic", aura: null },
+  body: { skinTone: "tone-2", height: "height-medium" },
   bestTimes: {},
   completions: {},
   stars: [],
@@ -48,6 +59,31 @@ interface StorageLike {
 }
 
 export type CosmeticKind = "skin" | "hat" | "trail" | "face" | "aura";
+export type BodyKind = "skinTone" | "height";
+
+type LooseSave = Partial<Omit<SaveData, "version" | "equipped" | "body">> & {
+  version?: number;
+  equipped?: Partial<SaveData["equipped"]>;
+  body?: Partial<SaveData["body"]>;
+};
+
+/** Merge a partial/older save over fresh defaults, healing missing fields. */
+function heal(parsed: LooseSave): SaveData {
+  const d = defaults();
+  const merged: SaveData = {
+    ...d,
+    ...parsed,
+    version: 3,
+    equipped: { ...d.equipped, ...parsed.equipped },
+    body: { ...d.body, ...parsed.body },
+    bestTimes: { ...parsed.bestTimes },
+    completions: { ...parsed.completions },
+    stars: Array.isArray(parsed.stars) ? parsed.stars : [],
+    owned: Array.isArray(parsed.owned) && parsed.owned.length > 0 ? parsed.owned : d.owned,
+  };
+  for (const id of d.owned) if (!merged.owned.includes(id)) merged.owned.push(id);
+  return merged;
+}
 
 export class SaveManager {
   readonly data: SaveData;
@@ -60,22 +96,9 @@ export class SaveManager {
     try {
       const raw = this.storage.getItem(KEY);
       if (!raw) return defaults();
-      const parsed = JSON.parse(raw) as Partial<Omit<SaveData, "version">> & { version?: number };
-      if (parsed.version !== 1 && parsed.version !== 2) return defaults();
-      // v1 → v2 and partial saves both heal by merging over defaults.
-      const d = defaults();
-      const merged: SaveData = {
-        ...d,
-        ...parsed,
-        version: 2,
-        equipped: { ...d.equipped, ...parsed.equipped },
-        bestTimes: { ...parsed.bestTimes },
-        completions: { ...parsed.completions },
-        stars: Array.isArray(parsed.stars) ? parsed.stars : [],
-        owned: Array.isArray(parsed.owned) && parsed.owned.length > 0 ? parsed.owned : d.owned,
-      };
-      for (const id of d.owned) if (!merged.owned.includes(id)) merged.owned.push(id);
-      return merged;
+      const parsed = JSON.parse(raw) as LooseSave;
+      if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3) return defaults();
+      return heal(parsed);
     } catch {
       return defaults();
     }
@@ -122,6 +145,12 @@ export class SaveManager {
     this.persist();
   }
 
+  /** Free body customization (skin tone, height) — always available. */
+  setBody(kind: BodyKind, id: string): void {
+    this.data.body[kind] = id;
+    this.persist();
+  }
+
   /** Record a completion; returns true when it's a new best time. */
   recordTime(courseId: string, seconds: number): boolean {
     const prev = this.data.bestTimes[courseId];
@@ -156,5 +185,38 @@ export class SaveManager {
   setMusicOn(on: boolean): void {
     this.data.musicOn = on;
     this.persist();
+  }
+
+  /** A short copyable code encoding the entire save, for backup/restore. */
+  exportCode(): string {
+    return CODE_PREFIX + btoa(JSON.stringify(this.data));
+  }
+
+  /**
+   * Restore from a code produced by exportCode(). Overwrites current
+   * progress in place (same object reference, so callers holding `data`
+   * see the update). Returns an error message on any malformed input
+   * instead of throwing.
+   */
+  importCode(code: string): { ok: true } | { ok: false; error: string } {
+    const trimmed = code.trim();
+    if (!trimmed.startsWith(CODE_PREFIX)) {
+      return { ok: false, error: "That code doesn't look right. Double-check and try again." };
+    }
+    let parsed: LooseSave;
+    try {
+      parsed = JSON.parse(atob(trimmed.slice(CODE_PREFIX.length))) as LooseSave;
+    } catch {
+      return { ok: false, error: "That code doesn't look right. Double-check and try again." };
+    }
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return { ok: false, error: "That code doesn't look right. Double-check and try again." };
+    }
+    if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3) {
+      return { ok: false, error: "That code doesn't look right. Double-check and try again." };
+    }
+    Object.assign(this.data, heal(parsed));
+    this.persist();
+    return { ok: true };
   }
 }
