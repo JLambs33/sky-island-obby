@@ -20,13 +20,10 @@ import { ZERO_DELTA, type GameHost, type Piece, type PieceHost } from "./types";
 import type { CourseId } from "./courses/defs";
 import type { InputController } from "../input/InputController";
 import { Player, PLAYER_HY } from "./Player";
-import { Coin } from "./pieces/Coin";
 import { BouncePad } from "./pieces/BouncePad";
 import { WindZone } from "./pieces/WindZone";
 import { Teleporter } from "./pieces/Teleporter";
 import { makeSign } from "./labels";
-
-const HUB_COIN_VALUE = 2;
 
 interface PortalSpec {
   id: CourseId;
@@ -89,7 +86,6 @@ export class Hub implements PieceHost {
 
   private readonly solids: Box[] = [];
   private readonly deltas: Vec3[] = [];
-  private readonly coins: Coin[] = [];
   private readonly bouncePads: BouncePad[] = [];
   private readonly wind: WindZone;
   private readonly teleporters: Teleporter[] = [];
@@ -227,9 +223,6 @@ export class Hub implements PieceHost {
     solidBox(-6, 0.3, 13, 2.2, 0.4, 2.2, 0x8fd487);
     solidBox(-8.5, 1.1, 15, 2.2, 0.4, 2.2, 0x8fd487);
     solidBox(-6, 1.9, 17, 2.2, 0.4, 2.2, 0x8fd487);
-    this.addCoin(-6, 1.4, 13);
-    this.addCoin(-8.5, 2.2, 15);
-    this.addCoin(-6, 3.0, 17);
 
     const pad1 = new BouncePad([2, 0, 13], 13);
     const pad2 = new BouncePad([5, 0, 13], 13);
@@ -242,23 +235,12 @@ export class Hub implements PieceHost {
     this.teleporters.push(tpOut, tpBack);
     this.group.add(tpOut.group, tpBack.group);
 
-    // ---- Floating bonus islands. ----
+    // ---- Floating bonus islands (exploration, no coins — hub has none). ----
     solidBox(18, 6.84, -4, 5, 1.2, 5, 0x58c04d);
-    this.addCoin(17, 8.3, -3);
-    this.addCoin(19, 8.3, -3);
-    this.addCoin(18, 8.3, -5);
-
     solidBox(-18, 8.84, -6, 4.5, 1.2, 4.5, 0x58c04d);
-    this.addCoin(-18, 10.4, -6);
-    this.addCoin(-19.2, 10.4, -5);
-    this.addCoin(-16.8, 10.4, -7);
     // Wind column up to the west island.
     this.wind = new WindZone([-18, 5, -1.5], [2.5, 10, 2.5], 10.5);
     this.group.add(this.wind.group);
-
-    // Ground pocket-money coins.
-    this.addCoin(6, 0.9, 8);
-    this.addCoin(-6, 0.9, -4);
 
     // ---- Trees, flowers, butterflies. ----
     for (const [tx, tz] of [
@@ -304,17 +286,10 @@ export class Hub implements PieceHost {
     while (this.deltas.length < this.solids.length) this.deltas.push(ZERO_DELTA as Vec3);
   }
 
-  private addCoin(x: number, y: number, z: number): void {
-    const coin = new Coin([x, y, z]);
-    this.coins.push(coin);
-    this.group.add(coin.group);
-  }
-
   step(dt: number, input: InputController, cameraYaw: number, player: Player): void {
     this.player = player;
     this.t += dt;
 
-    for (const c of this.coins) c.update(dt);
     for (const b of this.butterflies) b.update(dt);
     for (const p of this.bouncePads) p.update(dt);
     for (const tp of this.teleporters) tp.update(dt);
@@ -348,7 +323,6 @@ export class Hub implements PieceHost {
     this.deltas.length = solidsBase;
 
     const box = player.colliderBox();
-    for (const c of this.coins) c.checkTrigger(box, this);
     for (const tp of this.teleporters) tp.checkTrigger(box, this);
     this.wind.checkTrigger(box, this);
 
@@ -386,10 +360,10 @@ export class Hub implements PieceHost {
 
   kill(): void {}
 
-  collectCoin(_pos: Vec3): void {
-    this.game.addCoins(HUB_COIN_VALUE);
-    this.game.sfxPlay("coin");
-  }
+  // The hub has no coins (they only come from playing courses) — required by
+  // PieceHost for the teleporter/wind pieces it shares with Course, but never
+  // actually invoked here.
+  collectCoin(_pos: Vec3): void {}
 
   reachCheckpoint(_pos: Vec3): void {}
 

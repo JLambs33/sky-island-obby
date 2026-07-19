@@ -24,6 +24,7 @@ import { Conveyor } from "./pieces/Conveyor";
 import { WindZone } from "./pieces/WindZone";
 import { SpeedPad } from "./pieces/SpeedPad";
 import { Teleporter } from "./pieces/Teleporter";
+import { BalanceBeam } from "./pieces/BalanceBeam";
 import { Trophy } from "./pieces/Trophy";
 
 function buildPiece(def: PieceDef, themeColor: number): Piece {
@@ -68,6 +69,8 @@ function buildPiece(def: PieceDef, themeColor: number): Piece {
       return new SpeedPad(def.pos);
     case "teleporter":
       return new Teleporter(def.pos, def.dest, def.color);
+    case "beam":
+      return new BalanceBeam(def.pos, def.size);
     case "trophy":
       return new Trophy(def.pos);
   }
@@ -89,6 +92,14 @@ export class Course implements PieceHost {
   private pendingKill = false;
   /** Seconds of hazard immunity after a respawn (falling still kills). */
   private immunity = 0;
+  /**
+   * Belt-and-suspenders loop guard: if a course/checkpoint layout somehow
+   * strands the player somewhere they keep falling from, don't trust that
+   * spot anymore — snap back to the always-safe course start instead of
+   * respawning them into the same trap forever.
+   */
+  private lastRespawnAt = -Infinity;
+  private quickRespawnStreak = 0;
 
   constructor(
     readonly def: CourseDef,
@@ -108,6 +119,8 @@ export class Course implements PieceHost {
     this.coinsCollected = 0;
     this.pendingKill = false;
     this.immunity = 0;
+    this.lastRespawnAt = -Infinity;
+    this.quickRespawnStreak = 0;
     this.currentSpawn.x = this.def.spawn[0];
     this.currentSpawn.y = this.def.spawn[1];
     this.currentSpawn.z = this.def.spawn[2];
@@ -164,6 +177,20 @@ export class Course implements PieceHost {
     this.pendingKill = false;
     if (this.completed) return;
     this.game.sfxPlay("die");
+
+    // If the player keeps dying moments after each respawn, the current
+    // spawn point can't be trusted (a bad checkpoint spot, an edge case in
+    // some course layout) — stop retrying it and jump to the course start
+    // for good, rather than looping on the same trap forever.
+    const quick = this.elapsed - this.lastRespawnAt < 1.2;
+    this.quickRespawnStreak = quick ? this.quickRespawnStreak + 1 : 0;
+    this.lastRespawnAt = this.elapsed;
+    if (this.quickRespawnStreak >= 2) {
+      this.currentSpawn.x = this.def.spawn[0];
+      this.currentSpawn.y = this.def.spawn[1];
+      this.currentSpawn.z = this.def.spawn[2];
+      this.quickRespawnStreak = 0;
+    }
 
     let x = this.currentSpawn.x;
     let z = this.currentSpawn.z;

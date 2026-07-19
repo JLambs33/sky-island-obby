@@ -5,7 +5,7 @@
  * finale to the crater rim. Checkpoints are generous because nothing else is.
  */
 
-import type { CourseDef } from "./defs";
+import { zigzagBeam, type CourseDef } from "./defs";
 
 const OBSIDIAN = 0x2b2b33;
 const BASALT = 0x474b55;
@@ -54,12 +54,11 @@ export const VOLCANO: CourseDef = {
     { type: "platform", pos: [0, 8.3, -46.5], size: [3, 0.4, 3], color: BASALT },
     { type: "checkpoint", pos: [1, 8.5, -46.5] },
 
-    // Obsidian beam run under a hammer.
-    { type: "platform", pos: [0, 8.3, -51.5], size: [1.2, 0.4, 4], color: OBSIDIAN },
-    { type: "coin", pos: [0, 9.4, -51.5] },
-    { type: "platform", pos: [1.5, 8.3, -57], size: [1.2, 0.4, 4], color: OBSIDIAN },
+    // Curvy obsidian balance beam under a swinging hammer.
+    ...zigzagBeam(0.5, -49, 8.3, 4, 4, 1.3, 1.1),
+    { type: "coin", pos: [-0.8, 9.4, -49] },
     { type: "pendulum", pos: [1.5, 12.7, -57], length: 3.2, period: 2.6 },
-    { type: "coin", pos: [1.5, 9.4, -57] },
+    { type: "coin", pos: [1.8, 9.4, -57] },
     { type: "platform", pos: [0, 8.3, -62.5], size: [3, 0.4, 3], color: BASALT },
     { type: "checkpoint", pos: [-1, 8.5, -62.5] },
 

@@ -103,6 +103,30 @@ describe("Course respawn safety", () => {
     expect(Math.abs(player.pos.z)).toBeLessThan(3.1);
   });
 
+  it("stops trusting a spawn point that keeps failing and snaps to course start", () => {
+    const host = makeHost();
+    const player = new Player();
+    const course = new Course(DEF, host, player);
+    course.begin();
+    const input = makeInput(0);
+
+    // A checkpoint elsewhere on the same solid platform — perfectly valid
+    // ground, but simulate it somehow re-killing the player almost instantly
+    // three times in a row (belt-and-suspenders: whatever the real-world
+    // cause, the guard must not let this repeat forever).
+    course.reachCheckpoint({ x: 2, y: 0, z: 2 });
+    for (let i = 0; i < 3; i++) {
+      player.teleport(0, -20, 0); // force a fall regardless of cause
+      course.step(DT, input, 0);
+    }
+
+    expect(host.respawns).toBe(3);
+    // Third respawn must have given up on the checkpoint and used the
+    // course's own (always-safe) start spawn instead.
+    expect(Math.abs(player.pos.x - DEF.spawn[0])).toBeLessThan(0.1);
+    expect(Math.abs(player.pos.z - DEF.spawn[2])).toBeLessThan(0.1);
+  });
+
   it("hazard immunity blocks repeat kills right after a respawn, falling does not", () => {
     const host = makeHost();
     const player = new Player();

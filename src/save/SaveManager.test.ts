@@ -15,6 +15,7 @@ describe("SaveManager", () => {
     const save = new SaveManager(memoryStorage());
     expect(save.data.coins).toBe(0);
     expect(save.data.equipped.skin).toBe("classic");
+    expect(save.data.body).toEqual({ skinTone: "tone-2", height: "height-medium" });
     expect(save.owns("classic")).toBe(true);
   });
 
@@ -67,9 +68,10 @@ describe("SaveManager", () => {
     expect(save.data.coins).toBe(7);
     expect(save.data.equipped.skin).toBe("classic");
     expect(save.data.owned).toContain("classic");
+    expect(save.data.body.skinTone).toBe("tone-2");
   });
 
-  it("migrates a v1 save to v2, keeping progress and adding new fields", () => {
+  it("migrates a v1 save to v3, keeping progress and adding new fields", () => {
     const v1 = {
       version: 1,
       coins: 340,
@@ -80,18 +82,41 @@ describe("SaveManager", () => {
     };
     const storage = memoryStorage({ "sky-obby-save": JSON.stringify(v1) });
     const save = new SaveManager(storage);
-    expect(save.data.version).toBe(2);
+    expect(save.data.version).toBe(3);
     expect(save.data.coins).toBe(340);
     expect(save.data.equipped.skin).toBe("ocean");
     expect(save.data.equipped.hat).toBe("cap");
     expect(save.data.equipped.face).toBe("face-classic");
     expect(save.data.equipped.aura).toBeNull();
+    expect(save.data.body).toEqual({ skinTone: "tone-2", height: "height-medium" });
     expect(save.data.owned).toContain("face-classic"); // default granted
     expect(save.data.bestTimes["easy"]).toBeCloseTo(41.2);
     expect(save.data.completions).toEqual({});
     expect(save.data.stars).toEqual([]);
     expect(save.data.muted).toBe(true);
     expect(save.data.musicOn).toBe(true);
+  });
+
+  it("migrates a v2 save to v3, adding body defaults", () => {
+    const v2 = {
+      version: 2,
+      coins: 900,
+      owned: ["classic"],
+      equipped: { skin: "classic", hat: null, trail: null, face: "face-classic", aura: null },
+      bestTimes: {},
+      completions: { easy: 3 },
+      stars: ["easy"],
+      muted: false,
+      musicOn: false,
+    };
+    const storage = memoryStorage({ "sky-obby-save": JSON.stringify(v2) });
+    const save = new SaveManager(storage);
+    expect(save.data.version).toBe(3);
+    expect(save.data.coins).toBe(900);
+    expect(save.data.completions).toEqual({ easy: 3 });
+    expect(save.data.stars).toEqual(["easy"]);
+    expect(save.data.musicOn).toBe(false);
+    expect(save.data.body).toEqual({ skinTone: "tone-2", height: "height-medium" });
   });
 
   it("tracks completions, total, and stars", () => {
@@ -118,5 +143,61 @@ describe("SaveManager", () => {
     save.equip("aura", "aura-spark");
     save.equip("aura", null);
     expect(save.data.equipped.aura).toBeNull();
+  });
+
+  it("setBody updates and persists skin tone and height independently", () => {
+    const storage = memoryStorage();
+    const save = new SaveManager(storage);
+    save.setBody("skinTone", "tone-7");
+    save.setBody("height", "height-tall");
+    const reloaded = new SaveManager(storage);
+    expect(reloaded.data.body).toEqual({ skinTone: "tone-7", height: "height-tall" });
+  });
+
+  describe("backup code", () => {
+    it("round-trips coins, cosmetics, and body through export/import", () => {
+      const save = new SaveManager(memoryStorage());
+      save.addCoins(1234);
+      save.own("ocean");
+      save.equip("skin", "ocean");
+      save.setBody("skinTone", "tone-5");
+      save.recordCompletion("easy");
+      save.earnStar("easy");
+      const code = save.exportCode();
+
+      const fresh = new SaveManager(memoryStorage());
+      const result = fresh.importCode(code);
+      expect(result.ok).toBe(true);
+      expect(fresh.data.coins).toBe(1234);
+      expect(fresh.data.equipped.skin).toBe("ocean");
+      expect(fresh.data.body.skinTone).toBe("tone-5");
+      expect(fresh.data.stars).toEqual(["easy"]);
+    });
+
+    it("persists the imported save so a reload keeps it", () => {
+      const source = new SaveManager(memoryStorage());
+      source.addCoins(500);
+      const code = source.exportCode();
+
+      const storage = memoryStorage();
+      new SaveManager(storage).importCode(code);
+      const reloaded = new SaveManager(storage);
+      expect(reloaded.data.coins).toBe(500);
+    });
+
+    it("rejects garbage input without throwing", () => {
+      const save = new SaveManager(memoryStorage());
+      expect(save.importCode("not a real code").ok).toBe(false);
+      expect(save.importCode("SKYOBBY1:not-valid-base64!!!").ok).toBe(false);
+      expect(save.importCode("").ok).toBe(false);
+      // Untouched after failed imports.
+      expect(save.data.coins).toBe(0);
+    });
+
+    it("rejects a well-formed but nonsense payload", () => {
+      const save = new SaveManager(memoryStorage());
+      const bogus = "SKYOBBY1:" + btoa(JSON.stringify({ hello: "world" }));
+      expect(save.importCode(bogus).ok).toBe(false);
+    });
   });
 });

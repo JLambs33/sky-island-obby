@@ -21,10 +21,10 @@ export const EASY: CourseDef = {
   pieces: [
     { type: "platform", pos: [0, -0.2, 0], size: [6, 0.4, 6], color: GRASS },
 
-    // First hops — 1 to 2 unit gaps, flat.
-    { type: "platform", pos: [0, -0.2, -6], size: [4, 0.4, 4], color: GRASS },
+    // A straight balance beam — the first taste of careful walking, no
+    // jumping required yet.
+    { type: "beam", pos: [0, -0.2, -9], size: [1.3, 0.4, 10] },
     { type: "coin", pos: [0, 0.9, -6] },
-    { type: "platform", pos: [0, -0.2, -12], size: [4, 0.4, 4], color: GRASS },
     { type: "coin", pos: [0, 0.9, -12] },
 
     // A small sidestep and the first checkpoint.

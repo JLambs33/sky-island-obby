@@ -1,12 +1,13 @@
 /**
  * Style Studio — the character customizer. A side panel over the live game
  * view (the camera is snapped to face the avatar, so the player IS the
- * preview); every tap equips instantly. Only owned items appear as choices —
- * the shop is where new ones come from.
+ * preview); every tap equips instantly. Body customization (skin tone,
+ * height) is free and always available — only the clothing/hat/trail/aura
+ * sections are gated by ownership, since those come from the shop.
  */
 
-import { AURAS, FACES, HATS, SKINS, TRAILS } from "../world/cosmetics";
-import type { CosmeticKind, SaveManager } from "../save/SaveManager";
+import { AURAS, FACES, HATS, HEIGHTS, SKIN_TONES, SKINS, TRAILS } from "../world/cosmetics";
+import type { BodyKind, CosmeticKind, SaveManager } from "../save/SaveManager";
 import type { SfxName } from "../audio/Sfx";
 
 const css = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
@@ -116,9 +117,51 @@ export class Customizer {
 
   private render(): void {
     this.body.replaceChildren();
+    this.body.appendChild(this.renderBodySection("skinTone", "🎨 Skin Tone", SKIN_TONES));
+    this.body.appendChild(this.renderBodySection("height", "📏 Height", HEIGHTS));
     for (const kind of ["skin", "face", "hat", "trail", "aura"] as CosmeticKind[]) {
       this.body.appendChild(this.renderSection(kind));
     }
+  }
+
+  /** Free body options (skin tone, height) — never ownership-gated. */
+  private renderBodySection(
+    kind: BodyKind,
+    title: string,
+    options: readonly { id: string; name: string; color?: number; scale?: number }[],
+  ): HTMLElement {
+    const section = document.createElement("div");
+    section.className = "customizer-section";
+    const titleEl = document.createElement("div");
+    titleEl.className = "customizer-title";
+    titleEl.textContent = title;
+    const row = document.createElement("div");
+    row.className = "customizer-row";
+
+    const equippedId = this.save.data.body[kind];
+    for (const opt of options) {
+      const chip = document.createElement("button");
+      chip.className = "customizer-chip";
+      chip.title = opt.name;
+      if (opt.color !== undefined) {
+        chip.style.background = css(opt.color);
+      } else {
+        // Height presets: a little person glyph scaled to preview size.
+        chip.textContent = "🧍";
+        chip.style.fontSize = `${18 + (opt.scale ?? 1) * 10}px`;
+      }
+      if (equippedId === opt.id) chip.classList.add("selected");
+      chip.addEventListener("click", () => {
+        this.save.setBody(kind, opt.id);
+        this.hooks.sfxPlay("click");
+        this.hooks.onChanged();
+        this.render();
+      });
+      row.appendChild(chip);
+    }
+
+    section.append(titleEl, row);
+    return section;
   }
 
   private renderSection(kind: CosmeticKind): HTMLElement {
