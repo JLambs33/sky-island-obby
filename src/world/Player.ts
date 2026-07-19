@@ -48,6 +48,13 @@ export class Player {
   private buffer = 0;
   private runPhase = 0;
   private heading = 0;
+  private inputFreeze = 0;
+  /**
+   * Delta object of the solid stood on last step, captured by REFERENCE (each
+   * piece reuses one delta object), so platform carry stays correct even when
+   * the solids array shifts between steps (e.g. a vanish tile disappearing).
+   */
+  private groundDelta: Vec3 | null = null;
 
   private readonly moveResult: MoveResult = {
     x: 0,
@@ -96,10 +103,20 @@ export class Player {
     this.vel.x = this.vel.y = this.vel.z = 0;
     this.grounded = false;
     this.groundIndex = -1;
+    this.groundDelta = null;
     this.coyote = 0;
     this.buffer = 0;
     this.heading = heading;
     this.syncMesh();
+  }
+
+  /**
+   * Ignore movement/jump intents for a moment (respawn grace) so a held
+   * joystick can't steer the player straight off the platform again before
+   * they've even landed. Physics keeps running so the player settles.
+   */
+  freezeInput(seconds: number): void {
+    this.inputFreeze = seconds;
   }
 
   step(
@@ -113,25 +130,29 @@ export class Player {
     this.events.landed = false;
 
     // Ride whatever we were standing on last step.
-    if (this.grounded && this.groundIndex >= 0 && this.groundIndex < solidDeltas.length) {
-      const d = solidDeltas[this.groundIndex];
-      this.pos.x += d.x;
-      this.pos.y += d.y;
-      this.pos.z += d.z;
+    if (this.grounded && this.groundDelta) {
+      this.pos.x += this.groundDelta.x;
+      this.pos.y += this.groundDelta.y;
+      this.pos.z += this.groundDelta.z;
     }
+
+    const frozen = this.inputFreeze > 0;
+    if (frozen) this.inputFreeze -= dt;
 
     // Camera-relative horizontal velocity.
     const fx = -Math.sin(cameraYaw);
     const fz = -Math.cos(cameraYaw);
     const rx = -fz;
     const rz = fx;
-    const m = input.move;
-    this.vel.x = (fx * m.y + rx * m.x) * WALK_SPEED;
-    this.vel.z = (fz * m.y + rz * m.x) * WALK_SPEED;
+    const mx = frozen ? 0 : input.move.x;
+    const my = frozen ? 0 : input.move.y;
+    this.vel.x = (fx * my + rx * mx) * WALK_SPEED;
+    this.vel.z = (fz * my + rz * mx) * WALK_SPEED;
 
     // Jumping: buffer the press, allow it during coyote time.
     this.coyote = this.grounded ? COYOTE_SECONDS : Math.max(0, this.coyote - dt);
-    this.buffer = input.jumpPressed ? BUFFER_SECONDS : Math.max(0, this.buffer - dt);
+    this.buffer =
+      input.jumpPressed && !frozen ? BUFFER_SECONDS : Math.max(0, this.buffer - dt);
     if (this.buffer > 0 && this.coyote > 0) {
       this.vel.y = JUMP_VELOCITY;
       this.grounded = false;
@@ -167,6 +188,10 @@ export class Player {
     }
     this.grounded = r.onGround;
     this.groundIndex = r.groundIndex;
+    this.groundDelta =
+      r.groundIndex >= 0 && r.groundIndex < solidDeltas.length
+        ? solidDeltas[r.groundIndex]
+        : null;
 
     this.animate(dt);
     this.trail.update(

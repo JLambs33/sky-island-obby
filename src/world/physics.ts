@@ -32,6 +32,29 @@ export interface MoveResult {
   groundIndex: number;
 }
 
+/**
+ * Highest solid top surface directly under (x, z), considering only solids
+ * whose top is at or below `fromY + tolerance`. Used to ground-verify respawn
+ * points so the player never spawns over air. Returns null when nothing is
+ * below.
+ */
+export function findGroundY(
+  x: number,
+  z: number,
+  solids: readonly Box[],
+  fromY: number,
+  tolerance = 0.5,
+): number | null {
+  let best: number | null = null;
+  for (const s of solids) {
+    if (Math.abs(x - s.cx) >= s.hx || Math.abs(z - s.cz) >= s.hz) continue;
+    const top = s.cy + s.hy;
+    if (top > fromY + tolerance) continue;
+    if (best === null || top > best) best = top;
+  }
+  return best;
+}
+
 /** Strict overlap — touching faces do not count, so resolved contacts are stable. */
 export function boxesOverlap(a: Box, b: Box): boolean {
   return (

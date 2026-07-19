@@ -231,6 +231,13 @@ export class Game implements GameHost {
     this.shop.open();
   }
 
+  respawned(): void {
+    // Snap instead of lerping back from the fall point: during the long
+    // swoosh, camera-relative input steers somewhere the player doesn't
+    // expect, which is how respawn loops felt like "spawning in mid-air".
+    this.followCam.snap(this.player.pos, this.followCam.yaw);
+  }
+
   private applyCosmetics(): void {
     const e = this.save.data.equipped;
     this.player.applyCosmetics(e.skin, e.hat, e.trail);

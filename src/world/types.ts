@@ -19,6 +19,11 @@ export interface PieceHost {
   completeCourse(): void;
 }
 
+/** Per-step player state passed to trigger checks. */
+export interface TriggerCtx {
+  grounded: boolean;
+}
+
 export interface Piece {
   readonly group: Object3D;
   update(dt: number): void;
@@ -31,7 +36,7 @@ export interface Piece {
   /** Player is standing on one of this piece's solids this step. */
   onStand?(host: PieceHost): void;
   /** Overlap-triggered behavior (coins, lava, checkpoints, trophy). */
-  checkTrigger?(playerBox: Readonly<Box>, host: PieceHost): void;
+  checkTrigger?(playerBox: Readonly<Box>, host: PieceHost, ctx: TriggerCtx): void;
   reset(): void;
 }
 
@@ -43,4 +48,6 @@ export interface GameHost {
   courseComplete(timeSec: number): void;
   enterCourse(id: CourseId): void;
   openShop(): void;
+  /** The player was teleported back to a spawn point — snap the camera etc. */
+  respawned(): void;
 }
