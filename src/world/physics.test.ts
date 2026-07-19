@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { boxesOverlap, moveBox, type Box, type MoveResult } from "./physics";
+import { boxesOverlap, findGroundY, moveBox, type Box, type MoveResult } from "./physics";
 
 const box = (cx: number, cy: number, cz: number, hx: number, hy: number, hz: number): Box => ({
   cx,
@@ -23,6 +23,32 @@ const result = (): MoveResult => ({
 const platform = box(0, -0.2, 0, 2, 0.2, 2);
 // Player half extents (matches Player.ts).
 const H = { hx: 0.4, hy: 1.1, hz: 0.4 };
+
+describe("findGroundY", () => {
+  it("finds the top surface of a solid under the point", () => {
+    expect(findGroundY(0, 0, [platform], 5)).toBeCloseTo(0);
+  });
+
+  it("returns null when nothing is below", () => {
+    expect(findGroundY(10, 10, [platform], 5)).toBeNull();
+    expect(findGroundY(0, 0, [], 5)).toBeNull();
+  });
+
+  it("picks the highest of stacked solids", () => {
+    const upper = box(0, 2, 0, 2, 0.2, 2);
+    expect(findGroundY(0, 0, [platform, upper], 5)).toBeCloseTo(2.2);
+  });
+
+  it("ignores solids above the query height (plus tolerance)", () => {
+    const wayAbove = box(0, 8, 0, 2, 0.2, 2);
+    expect(findGroundY(0, 0, [platform, wayAbove], 5)).toBeCloseTo(0);
+  });
+
+  it("ignores solids the point is not horizontally over", () => {
+    const offToSide = box(5, 1, 0, 1, 0.2, 1);
+    expect(findGroundY(0, 0, [offToSide], 5)).toBeNull();
+  });
+});
 
 describe("boxesOverlap", () => {
   it("detects interpenetration and rejects separation", () => {

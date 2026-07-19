@@ -7,8 +7,8 @@
 
 import { Group } from "three";
 import type { CourseDef, PieceDef } from "./courses/defs";
-import type { Box, Vec3 } from "./physics";
-import type { GameHost, Piece, PieceHost } from "./types";
+import { findGroundY, type Box, type Vec3 } from "./physics";
+import type { GameHost, Piece, PieceHost, TriggerCtx } from "./types";
 import type { InputController } from "../input/InputController";
 import { Player, PLAYER_HY } from "./Player";
 import { Platform } from "./pieces/Platform";
@@ -61,6 +61,10 @@ export class Course implements PieceHost {
   private readonly deltas: Vec3[] = [];
   private readonly owners: (Piece | null)[] = [];
   private readonly currentSpawn: Vec3;
+  private readonly triggerCtx: TriggerCtx = { grounded: false };
+  private pendingKill = false;
+  /** Seconds of hazard immunity after a respawn (falling still kills). */
+  private immunity = 0;
 
   constructor(
     readonly def: CourseDef,
@@ -76,6 +80,8 @@ export class Course implements PieceHost {
   begin(): void {
     this.elapsed = 0;
     this.completed = false;
+    this.pendingKill = false;
+    this.immunity = 0;
     this.currentSpawn.x = this.def.spawn[0];
     this.currentSpawn.y = this.def.spawn[1];
     this.currentSpawn.z = this.def.spawn[2];
@@ -102,17 +108,49 @@ export class Course implements PieceHost {
     }
 
     const box = this.player.colliderBox();
-    for (const p of this.pieces) p.checkTrigger?.(box, this);
+    this.triggerCtx.grounded = this.player.grounded;
+    for (const p of this.pieces) p.checkTrigger?.(box, this, this.triggerCtx);
 
-    if (this.player.pos.y - PLAYER_HY < this.def.killY) this.kill();
+    // Falling out of the world always kills, even during hazard immunity.
+    if (this.player.pos.y - PLAYER_HY < this.def.killY) this.pendingKill = true;
+
+    // Process at most one kill per step, after all triggers have run, so a
+    // mid-loop teleport can't leave later pieces acting on a stale position.
+    if (this.pendingKill) this.respawn();
+    if (this.immunity > 0) this.immunity -= dt;
   }
 
   // ---------- PieceHost ----------
 
   kill(): void {
+    if (this.completed || this.immunity > 0) return;
+    this.pendingKill = true;
+  }
+
+  /**
+   * Send the player back to the active spawn point, ground-verified: the
+   * spawn is snapped onto the highest solid beneath it (falling back to the
+   * course start if nothing is there), the camera snaps with it, and a short
+   * input freeze + hazard immunity stop held input or a lingering hazard from
+   * instantly killing them again — the old behavior could loop forever.
+   */
+  private respawn(): void {
+    this.pendingKill = false;
     if (this.completed) return;
     this.game.sfxPlay("die");
-    this.player.teleport(this.currentSpawn.x, this.currentSpawn.y, this.currentSpawn.z);
+
+    let x = this.currentSpawn.x;
+    let z = this.currentSpawn.z;
+    let y = findGroundY(x, z, this.solids, this.currentSpawn.y + 1);
+    if (y === null) {
+      x = this.def.spawn[0];
+      z = this.def.spawn[2];
+      y = findGroundY(x, z, this.solids, this.def.spawn[1] + 1) ?? this.def.spawn[1];
+    }
+    this.player.teleport(x, y, z);
+    this.player.freezeInput(0.4);
+    this.immunity = 1.0;
+    this.game.respawned();
   }
 
   collectCoin(_pos: Vec3): void {

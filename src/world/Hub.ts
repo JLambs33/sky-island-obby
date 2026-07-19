@@ -147,6 +147,8 @@ export class Hub implements PieceHost {
 
     if (player.pos.y - PLAYER_HY < -10) {
       player.teleport(this.spawn.x, this.spawn.y, this.spawn.z);
+      player.freezeInput(0.4);
+      this.game.respawned();
     }
   }
 
