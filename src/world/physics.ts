@@ -32,6 +32,29 @@ export interface MoveResult {
   groundIndex: number;
 }
 
+/**
+ * Highest solid top surface directly under (x, z), considering only solids
+ * whose top is at or below `fromY + tolerance`. Used to ground-verify respawn
+ * points so the player never spawns over air. Returns null when nothing is
+ * below.
+ */
+export function findGroundY(
+  x: number,
+  z: number,
+  solids: readonly Box[],
+  fromY: number,
+  tolerance = 0.5,
+): number | null {
+  let best: number | null = null;
+  for (const s of solids) {
+    if (Math.abs(x - s.cx) >= s.hx || Math.abs(z - s.cz) >= s.hz) continue;
+    const top = s.cy + s.hy;
+    if (top > fromY + tolerance) continue;
+    if (best === null || top > best) best = top;
+  }
+  return best;
+}
+
 /** Strict overlap — touching faces do not count, so resolved contacts are stable. */
 export function boxesOverlap(a: Box, b: Box): boolean {
   return (
@@ -73,15 +96,19 @@ export function moveBox(
   mover.cy = py;
   mover.cz = pz;
 
+  // Horizontal resolution pushes toward the side the mover's center is on
+  // (minimal penetration), not the movement direction — so a solid that
+  // moved INTO a stationary player (pistons, sweeper walls) shoves them out
+  // the correct side even when the player isn't moving at all.
   for (const s of solids) {
     if (!boxesOverlap(mover, s)) continue;
-    mover.cx = dx > 0 ? s.cx - s.hx - hx - SKIN : s.cx + s.hx + hx + SKIN;
+    mover.cx = mover.cx < s.cx ? s.cx - s.hx - hx - SKIN : s.cx + s.hx + hx + SKIN;
   }
 
   mover.cz = pz + dz;
   for (const s of solids) {
     if (!boxesOverlap(mover, s)) continue;
-    mover.cz = dz > 0 ? s.cz - s.hz - hz - SKIN : s.cz + s.hz + hz + SKIN;
+    mover.cz = mover.cz < s.cz ? s.cz - s.hz - hz - SKIN : s.cz + s.hz + hz + SKIN;
   }
 
   mover.cy = py + dy;

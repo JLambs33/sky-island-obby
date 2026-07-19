@@ -5,7 +5,7 @@
 
 import { BoxGeometry, CylinderGeometry, Group, Mesh, MeshLambertMaterial } from "three";
 import { boxesOverlap, type Box, type Vec3 } from "../physics";
-import type { Piece, PieceHost } from "../types";
+import type { Piece, PieceHost, TriggerCtx } from "../types";
 
 export class Checkpoint implements Piece {
   readonly group = new Group();
@@ -45,8 +45,10 @@ export class Checkpoint implements Piece {
 
   collectSolids(): void {}
 
-  checkTrigger(playerBox: Readonly<Box>, host: PieceHost): void {
-    if (this.activated || !boxesOverlap(playerBox as Box, this.trigger)) return;
+  checkTrigger(playerBox: Readonly<Box>, host: PieceHost, ctx: TriggerCtx): void {
+    // Grounded-only: flying past the flag mid-air (a failed jump) must not
+    // move the respawn point somewhere the player never actually stood.
+    if (this.activated || !ctx.grounded || !boxesOverlap(playerBox as Box, this.trigger)) return;
     this.activated = true;
     this.flagMaterial.color.setHex(0x43c465);
     this.flagMaterial.emissive.setHex(0x1d7a35);

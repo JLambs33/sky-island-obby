@@ -14,7 +14,11 @@ export type SfxName =
   | "win"
   | "buy"
   | "denied"
-  | "click";
+  | "click"
+  | "teleport"
+  | "speed"
+  | "star"
+  | "unlock";
 
 export class Sfx {
   muted = false;
@@ -24,6 +28,11 @@ export class Sfx {
   unlock(): void {
     if (!this.ctx) this.ctx = new AudioContext();
     if (this.ctx.state === "suspended") void this.ctx.resume();
+  }
+
+  /** The shared AudioContext (null until unlock). Music taps into this. */
+  get context(): AudioContext | null {
+    return this.ctx;
   }
 
   play(name: SfxName): void {
@@ -65,6 +74,23 @@ export class Sfx {
         break;
       case "click":
         this.tone(850, 850, 0.04, "sine", 0.1);
+        break;
+      case "teleport":
+        this.tone(1400, 200, 0.18, "sawtooth", 0.1);
+        this.tone(200, 1600, 0.2, "sine", 0.12, 0.1);
+        break;
+      case "speed":
+        this.tone(400, 1200, 0.25, "square", 0.1);
+        break;
+      case "star":
+        for (const [i, f] of [784, 988, 1175, 1568].entries()) {
+          this.tone(f, f, 0.12, "sine", 0.16, i * 0.09);
+        }
+        break;
+      case "unlock":
+        this.tone(523, 523, 0.12, "triangle", 0.15);
+        this.tone(784, 784, 0.12, "triangle", 0.15, 0.13);
+        this.tone(1047, 1319, 0.3, "triangle", 0.16, 0.26);
         break;
     }
   }

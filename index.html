@@ -270,6 +270,40 @@
         border-radius: 12px;
         border: 3px solid rgba(0, 0, 0, 0.1);
       }
+      .shop-item .swatch-emoji {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 34px;
+        background: #fff;
+      }
+      /* Rarity tiers: card border + label color. */
+      .shop-item.r-common {
+        border: 3px solid #c9c4b2;
+      }
+      .shop-item.r-rare {
+        border: 3px solid #53b9ff;
+      }
+      .shop-item.r-epic {
+        border: 3px solid #b46fff;
+      }
+      .shop-item.r-legendary {
+        border: 3px solid #ffb020;
+        box-shadow: 0 0 12px rgba(255, 176, 32, 0.5);
+      }
+      .rarity-label {
+        font-size: 12px;
+        opacity: 0.75;
+      }
+      .r-rare .rarity-label {
+        color: #1e7ac2;
+      }
+      .r-epic .rarity-label {
+        color: #7a3fc1;
+      }
+      .r-legendary .rarity-label {
+        color: #b0641a;
+      }
       .shop-item button {
         font-size: 15px;
         font-weight: bold;
@@ -284,6 +318,125 @@
       .shop-item button:disabled {
         background: #c9c4b2;
         cursor: default;
+      }
+
+      /* ---------- Customizer (Style Studio) ---------- */
+      #customizer {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(46vw, 420px);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px;
+        padding-top: calc(16px + env(safe-area-inset-top));
+        background: rgba(255, 254, 247, 0.96);
+        border-radius: 24px 0 0 24px;
+        box-shadow: -8px 0 30px rgba(0, 0, 0, 0.3);
+        pointer-events: auto;
+      }
+      #customizer.hidden {
+        display: none;
+      }
+      .customizer-head {
+        font-size: 26px;
+        font-weight: bold;
+        color: #7a3fc1;
+        text-align: center;
+      }
+      .customizer-body {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .customizer-title {
+        font-size: 17px;
+        font-weight: bold;
+        color: #4a4536;
+        margin-bottom: 6px;
+      }
+      .customizer-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .customizer-chip {
+        width: 52px;
+        height: 52px;
+        border-radius: 12px;
+        border: 3px solid rgba(0, 0, 0, 0.12);
+        background: #fff;
+        font-size: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .customizer-chip.selected {
+        border-color: #43c465;
+        box-shadow: 0 0 0 3px rgba(67, 196, 101, 0.4);
+      }
+      .customizer-hint {
+        font-size: 13px;
+        color: #8a8470;
+        margin-top: 4px;
+      }
+      .customizer-done {
+        align-self: center;
+        font-size: 22px;
+        padding: 12px 44px;
+      }
+      .round-btn.off {
+        opacity: 0.35;
+      }
+
+      /* ---------- Settings ---------- */
+      .settings-panel {
+        width: min(92vw, 520px);
+      }
+      .settings-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 18px 20px;
+        overflow-y: auto;
+      }
+      .settings-label {
+        font-size: 15px;
+        font-weight: bold;
+        color: #4a4536;
+        margin-top: 6px;
+      }
+      .settings-code {
+        width: 100%;
+        box-sizing: border-box;
+        font-family: ui-monospace, "SF Mono", Consolas, monospace;
+        font-size: 13px;
+        padding: 10px;
+        border-radius: 12px;
+        border: 2px solid #d8d4c2;
+        background: #fbfaf4;
+        color: #4a4536;
+        resize: none;
+      }
+      .settings-btn {
+        align-self: center;
+        font-size: 18px;
+        padding: 10px 28px;
+      }
+      .restore-btn {
+        background: #2bb3f3;
+        box-shadow: 0 6px 0 #1e7ac2;
+      }
+      .settings-status {
+        min-height: 22px;
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        color: #4a4536;
       }
 
       /* ---------- Toast ---------- */

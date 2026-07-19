@@ -16,17 +16,40 @@ import { Course } from "../world/Course";
 import { EASY } from "../world/courses/easy";
 import { MEDIUM } from "../world/courses/medium";
 import { HARD } from "../world/courses/hard";
+import { CANDY } from "../world/courses/candy";
+import { GEARS } from "../world/courses/gears";
+import { VOLCANO } from "../world/courses/volcano";
 import type { CourseDef, CourseId } from "../world/courses/defs";
 import type { GameHost } from "../world/types";
+import { heightById } from "../world/cosmetics";
 import { SaveManager } from "../save/SaveManager";
 import { Sfx, type SfxName } from "../audio/Sfx";
+import { Music } from "../audio/Music";
 import { Hud } from "../ui/Hud";
 import { TouchControls } from "../ui/TouchControls";
 import { Menu } from "../ui/Menu";
 import { Shop } from "../ui/Shop";
+import { Customizer } from "../ui/Customizer";
+import { Settings } from "../ui/Settings";
 
-const COURSES: Record<CourseId, CourseDef> = { easy: EASY, medium: MEDIUM, hard: HARD };
+const COURSES: Record<CourseId, CourseDef> = {
+  easy: EASY,
+  medium: MEDIUM,
+  hard: HARD,
+  candy: CANDY,
+  gears: GEARS,
+  volcano: VOLCANO,
+};
+const LOCK_HINTS: Record<CourseId, string> = {
+  easy: "",
+  medium: "",
+  hard: "",
+  candy: "Finish any course!",
+  gears: "Finish Candy Rush!",
+  volcano: "Finish Gear Works!",
+};
 const RETURN_TO_HUB_SECONDS = 3;
+const STAR_BONUS = 100;
 
 type State = "menu" | "hub" | "course";
 
@@ -56,10 +79,15 @@ export class Game implements GameHost {
   private readonly hud: Hud;
   private readonly touchControls: TouchControls;
   private readonly shop: Shop;
+  private readonly customizer: Customizer;
+  private readonly settings: Settings;
+  private readonly music = new Music();
 
   private hub: Hub | null = null;
   private course: Course | null = null;
   private shopOpen = false;
+  private customizerOpen = false;
+  private settingsOpen = false;
   private returnTimer = 0;
 
   constructor(
@@ -85,8 +113,16 @@ export class Game implements GameHost {
         this.save.setMuted(this.sfx.muted);
         return this.sfx.muted;
       },
+      onToggleMusic: () => {
+        const on = !this.save.data.musicOn;
+        this.save.setMusicOn(on);
+        this.syncMusic();
+        return on;
+      },
+      onSettings: () => this.openSettings(),
     });
     this.hud.setMuted(this.sfx.muted);
+    this.hud.setMusicOn(this.save.data.musicOn);
     this.hud.setCoins(this.save.data.coins);
     this.touchControls = new TouchControls(ui, this.input.touch, this.input.buttons);
     this.shop = new Shop(ui, this.save, {
@@ -97,10 +133,35 @@ export class Game implements GameHost {
       onChanged: () => this.applyCosmetics(),
       sfxPlay: (name) => this.sfx.play(name),
     });
+    this.customizer = new Customizer(ui, this.save, {
+      onClose: () => {
+        this.customizerOpen = false;
+        this.input.controller.setEnabled(true);
+        this.followCam.snap(this.player.pos, this.followCam.yaw);
+      },
+      onChanged: () => this.applyCosmetics(),
+      sfxPlay: (name) => this.sfx.play(name),
+    });
+    this.settings = new Settings(ui, this.save, {
+      onClose: () => {
+        this.settingsOpen = false;
+        this.input.controller.setEnabled(true);
+      },
+      onRestored: () => {
+        this.sfx.muted = this.save.data.muted;
+        this.hud.setMuted(this.sfx.muted);
+        this.hud.setMusicOn(this.save.data.musicOn);
+        this.syncMusic();
+        this.hud.setCoins(this.save.data.coins);
+        this.applyCosmetics();
+      },
+      sfxPlay: (name) => this.sfx.play(name),
+    });
     new Menu(ui, () => {
       this.sfx.unlock();
       this.sfx.play("click");
       this.state = "hub";
+      this.syncMusic();
     });
 
     this.applyCosmetics();
@@ -125,7 +186,7 @@ export class Game implements GameHost {
 
   private step(dt: number): void {
     this.env.update(dt);
-    if (this.state !== "menu" && !this.shopOpen) {
+    if (this.state !== "menu" && !this.shopOpen && !this.settingsOpen) {
       if (this.state === "hub" && this.hub) {
         this.hub.step(dt, this.input.controller, this.followCam.yaw, this.player);
       } else if (this.state === "course" && this.course) {
@@ -156,17 +217,19 @@ export class Game implements GameHost {
     }
   }
 
-  private enterHub(): void {
+  enterHub(): void {
     this.removeWorld();
-    this.hub = new Hub(this, this.signSubs());
+    this.hub = new Hub(this, this.signSubs(), this.unlockedCourses(), LOCK_HINTS);
     this.scene.add(this.hub.group);
-    this.player.teleport(this.hub.spawn.x, this.hub.spawn.y, this.hub.spawn.z, Math.PI);
+    // heading 0 = facing +Z, toward the camera — a friendly hello.
+    this.player.teleport(this.hub.spawn.x, this.hub.spawn.y, this.hub.spawn.z, 0);
     this.followCam.snap(this.player.pos, 0);
     this.hud.showHub();
     this.state = "hub";
   }
 
   enterCourse(id: CourseId): void {
+    if (!this.unlockedCourses()[id]) return; // hub gates this; belt and braces
     const def = COURSES[id];
     this.removeWorld();
     this.course = new Course(def, this, this.player);
@@ -178,12 +241,27 @@ export class Game implements GameHost {
     this.state = "course";
   }
 
+  private unlockedCourses(): Record<CourseId, boolean> {
+    const c = this.save.data.completions;
+    return {
+      easy: true,
+      medium: true,
+      hard: true,
+      candy: this.save.totalCompletions() >= 1,
+      gears: (c["candy"] ?? 0) >= 1,
+      volcano: (c["gears"] ?? 0) >= 1,
+    };
+  }
+
   private signSubs(): Record<CourseId, string> {
     const subs = {} as Record<CourseId, string>;
     for (const def of Object.values(COURSES)) {
       const best = this.save.data.bestTimes[def.id];
+      const star = this.save.data.stars.includes(def.id) ? " ⭐" : "";
       subs[def.id] =
-        best === undefined ? "Walk through to play!" : `Best: ${best.toFixed(1)}s ${this.medalFor(def, best)}`;
+        best === undefined
+          ? "Walk through to play!"
+          : `Best: ${best.toFixed(1)}s ${this.medalFor(def, best)}${star}`;
     }
     return subs;
   }
@@ -209,30 +287,89 @@ export class Game implements GameHost {
     this.sfx.play(name);
   }
 
-  courseComplete(timeSec: number): void {
+  courseComplete(timeSec: number, coinsCollected: number, totalCoins: number): void {
     if (!this.course) return;
     const def = this.course.def;
     this.sfx.play("win");
-    this.addCoins(def.bonus);
+    const unlockedBefore = this.unlockedCourses();
+    this.save.recordCompletion(def.id);
     const newBest = this.save.recordTime(def.id, timeSec);
     const medal = this.medalFor(def, timeSec);
-    this.hud.toast(
-      `🏆 ${def.name} complete! ${medal}\n+${def.bonus} coins${newBest ? " · New best time!" : ""}`,
-      2800,
-    );
+
+    let bonus = def.bonus;
+    const lines = [`🏆 ${def.name} complete! ${medal}`];
+    if (coinsCollected === totalCoins && totalCoins > 0 && this.save.earnStar(def.id)) {
+      bonus += STAR_BONUS;
+      lines.push(`⭐ ALL ${totalCoins} coins! +${STAR_BONUS} bonus`);
+      this.sfx.play("star");
+    }
+    lines.push(`+${bonus} coins${newBest ? " · New best time!" : ""}`);
+    this.addCoins(bonus);
+
+    const unlockedAfter = this.unlockedCourses();
+    for (const id of Object.keys(unlockedAfter) as CourseId[]) {
+      if (unlockedAfter[id] && !unlockedBefore[id]) {
+        lines.push(`🎉 ${COURSES[id].name} unlocked!`);
+        this.sfx.play("unlock");
+      }
+    }
+
+    this.hud.toast(lines.join("\n"), 3400);
     this.returnTimer = RETURN_TO_HUB_SECONDS;
   }
 
   openShop(): void {
-    if (this.state !== "hub" || this.shopOpen) return;
+    if (this.state !== "hub" || this.shopOpen || this.customizerOpen || this.settingsOpen) return;
     this.shopOpen = true;
     this.input.controller.setEnabled(false);
     this.sfx.play("click");
     this.shop.open();
   }
 
+  openCustomizer(): void {
+    if (
+      this.state !== "hub" ||
+      this.shopOpen ||
+      this.customizerOpen ||
+      this.settingsOpen ||
+      !this.hub
+    )
+      return;
+    this.customizerOpen = true;
+    this.input.controller.setEnabled(false);
+    this.sfx.play("click");
+    // Pose on the podium facing the camera; the live view is the preview.
+    const spot = this.hub.studioSpot;
+    this.player.teleport(spot.x, spot.y, spot.z, 0);
+    this.followCam.snap(this.player.pos, 0);
+    this.customizer.open();
+  }
+
+  openSettings(): void {
+    if (this.shopOpen || this.customizerOpen || this.settingsOpen) return;
+    this.settingsOpen = true;
+    this.input.controller.setEnabled(false);
+    this.sfx.play("click");
+    this.settings.open();
+  }
+
+  private syncMusic(): void {
+    const ctx = this.sfx.context;
+    if (!ctx) return;
+    if (this.save.data.musicOn && this.state !== "menu") this.music.start(ctx);
+    else this.music.stop();
+  }
+
+  respawned(): void {
+    // Snap instead of lerping back from the fall point: during the long
+    // swoosh, camera-relative input steers somewhere the player doesn't
+    // expect, which is how respawn loops felt like "spawning in mid-air".
+    this.followCam.snap(this.player.pos, this.followCam.yaw);
+  }
+
   private applyCosmetics(): void {
     const e = this.save.data.equipped;
-    this.player.applyCosmetics(e.skin, e.hat, e.trail);
+    const b = this.save.data.body;
+    this.player.applyCosmetics(e.skin, e.hat, e.trail, e.face, e.aura, b.skinTone, heightById(b.height).scale);
   }
 }
