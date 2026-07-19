@@ -10,16 +10,22 @@
 export type V3 = [number, number, number];
 
 export type PieceDef =
-  | { type: "platform"; pos: V3; size: V3; color?: number; moveTo?: V3; period?: number }
+  | { type: "platform"; pos: V3; size: V3; color?: number; moveTo?: V3; period?: number; path?: V3[]; speed?: number }
   | { type: "vanish"; pos: V3; size?: V3 }
-  | { type: "lava"; pos: V3; size: V3 }
+  | { type: "falling"; pos: V3; size?: V3 }
+  | { type: "lava"; pos: V3; size: V3; moveTo?: V3; period?: number }
   | { type: "bounce"; pos: V3; power?: number }
   | { type: "checkpoint"; pos: V3 }
   | { type: "coin"; pos: V3 }
   | { type: "spinner"; pos: V3; radius?: number; period?: number }
+  | { type: "pendulum"; pos: V3; length?: number; period?: number; maxAngle?: number }
+  | { type: "conveyor"; pos: V3; size: V3; dir: [number, number]; speed?: number }
+  | { type: "wind"; pos: V3; size: V3; strength?: number }
+  | { type: "speed"; pos: V3 }
+  | { type: "teleporter"; pos: V3; dest: V3; color?: number }
   | { type: "trophy"; pos: V3 };
 
-export type CourseId = "easy" | "medium" | "hard";
+export type CourseId = "easy" | "medium" | "hard" | "candy" | "gears" | "volcano";
 
 export interface CourseDef {
   id: CourseId;

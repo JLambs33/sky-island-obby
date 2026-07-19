@@ -16,6 +16,8 @@ app.appendChild(renderer.domElement);
 const camera = new PerspectiveCamera(60, 1, 0.1, 300);
 const scene = new Scene();
 const game = new Game(renderer, scene, camera);
+// Console/test hook (e.g. __game.enterCourse("candy")).
+(window as unknown as Record<string, unknown>).__game = game;
 
 function resize(): void {
   const w = window.innerWidth;

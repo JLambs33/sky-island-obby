@@ -11,8 +11,9 @@
 import { Group } from "three";
 import type { InputController } from "../input/InputController";
 import { moveBox, type Box, type MoveResult, type Vec3 } from "./physics";
-import { buildAvatar, trailById, type AvatarRig } from "./cosmetics";
+import { buildAvatar, trailById, auraById, type AvatarRig } from "./cosmetics";
 import { Trail } from "./Trail";
+import { Aura } from "./Aura";
 
 export const PLAYER_HX = 0.4;
 export const PLAYER_HY = 1.1;
@@ -39,10 +40,11 @@ export class Player {
   /** Which solid we stood on last step (course pieces use this for onStand). */
   groundIndex = -1;
 
-  /** Root added to the scene; contains the avatar and the trail. */
+  /** Root added to the scene; contains the avatar, trail, and aura. */
   readonly root = new Group();
   private rig: AvatarRig;
   private readonly trail = new Trail();
+  private readonly aura = new Aura();
 
   private coyote = 0;
   private buffer = 0;
@@ -55,6 +57,12 @@ export class Player {
    * the solids array shifts between steps (e.g. a vanish tile disappearing).
    */
   private groundDelta: Vec3 | null = null;
+  // External drift (units/sec) accumulated by conveyors this step's onStand,
+  // consumed on the following step (onStand runs after the move).
+  private pendingPushX = 0;
+  private pendingPushZ = 0;
+  private boostTimer = 0;
+  private boostMult = 1;
 
   private readonly moveResult: MoveResult = {
     x: 0,
@@ -75,16 +83,23 @@ export class Player {
   private readonly events: StepEvents = { jumped: false, landed: false };
 
   constructor() {
-    this.rig = buildAvatar("classic", null);
-    this.root.add(this.rig.group, this.trail.points);
+    this.rig = buildAvatar("classic", null, "face-classic");
+    this.root.add(this.rig.group, this.trail.points, this.aura.points);
   }
 
   /** Rebuild the avatar for the equipped cosmetics. */
-  applyCosmetics(skinId: string, hatId: string | null, trailId: string | null): void {
+  applyCosmetics(
+    skinId: string,
+    hatId: string | null,
+    trailId: string | null,
+    faceId = "face-classic",
+    auraId: string | null = null,
+  ): void {
     this.root.remove(this.rig.group);
-    this.rig = buildAvatar(skinId, hatId);
+    this.rig = buildAvatar(skinId, hatId, faceId);
     this.root.add(this.rig.group);
     this.trail.setDef(trailById(trailId));
+    this.aura.setDef(auraById(auraId));
     this.syncMesh();
   }
 
@@ -119,6 +134,22 @@ export class Player {
     this.inputFreeze = seconds;
   }
 
+  /** Conveyor drift for the next step, in units/sec (accumulates). */
+  addPush(x: number, z: number): void {
+    this.pendingPushX += x;
+    this.pendingPushZ += z;
+  }
+
+  /** Temporary run-speed multiplier (speed pads). */
+  boost(mult: number, seconds: number): void {
+    this.boostMult = mult;
+    this.boostTimer = seconds;
+  }
+
+  get boosted(): boolean {
+    return this.boostTimer > 0;
+  }
+
   step(
     dt: number,
     input: InputController,
@@ -138,16 +169,20 @@ export class Player {
 
     const frozen = this.inputFreeze > 0;
     if (frozen) this.inputFreeze -= dt;
+    if (this.boostTimer > 0) this.boostTimer -= dt;
+    const speed = WALK_SPEED * (this.boostTimer > 0 ? this.boostMult : 1);
 
-    // Camera-relative horizontal velocity.
+    // Camera-relative horizontal velocity, plus external drift (conveyors).
     const fx = -Math.sin(cameraYaw);
     const fz = -Math.cos(cameraYaw);
     const rx = -fz;
     const rz = fx;
     const mx = frozen ? 0 : input.move.x;
     const my = frozen ? 0 : input.move.y;
-    this.vel.x = (fx * my + rx * mx) * WALK_SPEED;
-    this.vel.z = (fz * my + rz * mx) * WALK_SPEED;
+    this.vel.x = (fx * my + rx * mx) * speed + this.pendingPushX;
+    this.vel.z = (fz * my + rz * mx) * speed + this.pendingPushZ;
+    this.pendingPushX = 0;
+    this.pendingPushZ = 0;
 
     // Jumping: buffer the press, allow it during coyote time.
     this.coyote = this.grounded ? COYOTE_SECONDS : Math.max(0, this.coyote - dt);
@@ -201,6 +236,7 @@ export class Player {
       this.pos.z,
       Math.hypot(this.vel.x, this.vel.z) > 1 || !this.grounded,
     );
+    this.aura.update(dt, this.pos.x, this.pos.y - PLAYER_HY, this.pos.z);
     this.syncMesh();
     return this.events;
   }

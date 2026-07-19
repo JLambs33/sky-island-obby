@@ -13,11 +13,17 @@ import type { InputController } from "../input/InputController";
 import { Player, PLAYER_HY } from "./Player";
 import { Platform } from "./pieces/Platform";
 import { VanishTile } from "./pieces/VanishTile";
+import { FallingTile } from "./pieces/FallingTile";
 import { Lava } from "./pieces/Lava";
 import { BouncePad } from "./pieces/BouncePad";
 import { Checkpoint } from "./pieces/Checkpoint";
 import { Coin } from "./pieces/Coin";
 import { Spinner } from "./pieces/Spinner";
+import { Pendulum } from "./pieces/Pendulum";
+import { Conveyor } from "./pieces/Conveyor";
+import { WindZone } from "./pieces/WindZone";
+import { SpeedPad } from "./pieces/SpeedPad";
+import { Teleporter } from "./pieces/Teleporter";
 import { Trophy } from "./pieces/Trophy";
 
 function buildPiece(def: PieceDef, themeColor: number): Piece {
@@ -32,12 +38,18 @@ function buildPiece(def: PieceDef, themeColor: number): Piece {
         opts.moveTo = def.moveTo;
         opts.period = def.period ?? 4;
       }
+      if (def.path) {
+        opts.path = def.path;
+        opts.speed = def.speed ?? 2;
+      }
       return new Platform(opts);
     }
     case "vanish":
       return new VanishTile(def.pos, def.size ?? [2, 0.4, 2]);
+    case "falling":
+      return new FallingTile(def.pos, def.size ?? [2, 0.4, 2]);
     case "lava":
-      return new Lava(def.pos, def.size);
+      return new Lava(def.pos, def.size, def.moveTo, def.period ?? 4);
     case "bounce":
       return new BouncePad(def.pos, def.power ?? 16);
     case "checkpoint":
@@ -46,6 +58,16 @@ function buildPiece(def: PieceDef, themeColor: number): Piece {
       return new Coin(def.pos);
     case "spinner":
       return new Spinner(def.pos, def.radius ?? 2.6, def.period ?? 2.8);
+    case "pendulum":
+      return new Pendulum(def.pos, def.length ?? 3.2, def.period ?? 2.6, def.maxAngle ?? 1.0);
+    case "conveyor":
+      return new Conveyor(def.pos, def.size, def.dir, def.speed ?? 3.5);
+    case "wind":
+      return new WindZone(def.pos, def.size, def.strength ?? 9);
+    case "speed":
+      return new SpeedPad(def.pos);
+    case "teleporter":
+      return new Teleporter(def.pos, def.dest, def.color);
     case "trophy":
       return new Trophy(def.pos);
   }
@@ -55,6 +77,8 @@ export class Course implements PieceHost {
   readonly group = new Group();
   elapsed = 0;
   completed = false;
+  coinsCollected = 0;
+  readonly totalCoins: number;
 
   private readonly pieces: Piece[];
   private readonly solids: Box[] = [];
@@ -74,12 +98,14 @@ export class Course implements PieceHost {
     this.pieces = def.pieces.map((p) => buildPiece(p, def.color));
     for (const p of this.pieces) this.group.add(p.group);
     this.currentSpawn = { x: def.spawn[0], y: def.spawn[1], z: def.spawn[2] };
+    this.totalCoins = def.pieces.filter((p) => p.type === "coin").length;
   }
 
   /** Reset the run and place the player at the start. */
   begin(): void {
     this.elapsed = 0;
     this.completed = false;
+    this.coinsCollected = 0;
     this.pendingKill = false;
     this.immunity = 0;
     this.currentSpawn.x = this.def.spawn[0];
@@ -154,6 +180,7 @@ export class Course implements PieceHost {
   }
 
   collectCoin(_pos: Vec3): void {
+    this.coinsCollected++;
     this.game.addCoins(this.def.coinValue);
     this.game.sfxPlay("coin");
   }
@@ -172,9 +199,31 @@ export class Course implements PieceHost {
     this.game.sfxPlay("bounce");
   }
 
+  push(x: number, z: number): void {
+    this.player.addPush(x, z);
+  }
+
+  boost(mult: number, seconds: number): void {
+    if (!this.player.boosted) this.game.sfxPlay("speed");
+    this.player.boost(mult, seconds);
+  }
+
+  updraft(strength: number): void {
+    // Called once per fixed step while inside the zone: +1 unit/s per step
+    // (60 u/s² lift) up to the zone's strength — a ride, not a launch.
+    const v = this.player.vel;
+    if (v.y < strength) v.y = Math.min(v.y + 1.0, strength);
+  }
+
+  teleportPlayer(x: number, y: number, z: number): void {
+    this.player.teleport(x, y, z);
+    this.game.sfxPlay("teleport");
+    this.game.respawned(); // snap the camera along
+  }
+
   completeCourse(): void {
     if (this.completed) return;
     this.completed = true;
-    this.game.courseComplete(this.elapsed);
+    this.game.courseComplete(this.elapsed, this.coinsCollected, this.totalCoins);
   }
 }

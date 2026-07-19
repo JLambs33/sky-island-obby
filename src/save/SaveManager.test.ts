@@ -68,4 +68,55 @@ describe("SaveManager", () => {
     expect(save.data.equipped.skin).toBe("classic");
     expect(save.data.owned).toContain("classic");
   });
+
+  it("migrates a v1 save to v2, keeping progress and adding new fields", () => {
+    const v1 = {
+      version: 1,
+      coins: 340,
+      owned: ["classic", "ocean", "cap"],
+      equipped: { skin: "ocean", hat: "cap", trail: null },
+      bestTimes: { easy: 41.2 },
+      muted: true,
+    };
+    const storage = memoryStorage({ "sky-obby-save": JSON.stringify(v1) });
+    const save = new SaveManager(storage);
+    expect(save.data.version).toBe(2);
+    expect(save.data.coins).toBe(340);
+    expect(save.data.equipped.skin).toBe("ocean");
+    expect(save.data.equipped.hat).toBe("cap");
+    expect(save.data.equipped.face).toBe("face-classic");
+    expect(save.data.equipped.aura).toBeNull();
+    expect(save.data.owned).toContain("face-classic"); // default granted
+    expect(save.data.bestTimes["easy"]).toBeCloseTo(41.2);
+    expect(save.data.completions).toEqual({});
+    expect(save.data.stars).toEqual([]);
+    expect(save.data.muted).toBe(true);
+    expect(save.data.musicOn).toBe(true);
+  });
+
+  it("tracks completions, total, and stars", () => {
+    const storage = memoryStorage();
+    const save = new SaveManager(storage);
+    save.recordCompletion("easy");
+    save.recordCompletion("easy");
+    save.recordCompletion("candy");
+    expect(save.data.completions["easy"]).toBe(2);
+    expect(save.totalCompletions()).toBe(3);
+
+    expect(save.earnStar("easy")).toBe(true);
+    expect(save.earnStar("easy")).toBe(false); // only once
+    const reloaded = new SaveManager(storage);
+    expect(reloaded.data.stars).toEqual(["easy"]);
+    expect(reloaded.totalCompletions()).toBe(3);
+  });
+
+  it("face cannot be unequipped, aura can", () => {
+    const save = new SaveManager(memoryStorage());
+    save.equip("face", "face-cool");
+    save.equip("face", null); // ignored
+    expect(save.data.equipped.face).toBe("face-cool");
+    save.equip("aura", "aura-spark");
+    save.equip("aura", null);
+    expect(save.data.equipped.aura).toBeNull();
+  });
 });

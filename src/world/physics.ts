@@ -96,15 +96,19 @@ export function moveBox(
   mover.cy = py;
   mover.cz = pz;
 
+  // Horizontal resolution pushes toward the side the mover's center is on
+  // (minimal penetration), not the movement direction — so a solid that
+  // moved INTO a stationary player (pistons, sweeper walls) shoves them out
+  // the correct side even when the player isn't moving at all.
   for (const s of solids) {
     if (!boxesOverlap(mover, s)) continue;
-    mover.cx = dx > 0 ? s.cx - s.hx - hx - SKIN : s.cx + s.hx + hx + SKIN;
+    mover.cx = mover.cx < s.cx ? s.cx - s.hx - hx - SKIN : s.cx + s.hx + hx + SKIN;
   }
 
   mover.cz = pz + dz;
   for (const s of solids) {
     if (!boxesOverlap(mover, s)) continue;
-    mover.cz = dz > 0 ? s.cz - s.hz - hz - SKIN : s.cz + s.hz + hz + SKIN;
+    mover.cz = mover.cz < s.cz ? s.cz - s.hz - hz - SKIN : s.cz + s.hz + hz + SKIN;
   }
 
   mover.cy = py + dy;

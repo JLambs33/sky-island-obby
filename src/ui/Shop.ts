@@ -1,48 +1,79 @@
 /**
- * Shop overlay — tabs for skins/hats/trails, big touch targets. Buying
- * auto-equips; tapping an equipped hat/trail removes it (skins always have
- * one equipped). All state lives in SaveManager; this class just renders it.
+ * Shop overlay — five cosmetic tabs with rarity-tiered cards, big touch
+ * targets. Buying auto-equips; tapping an equipped hat/trail/aura removes it
+ * (skins and faces always have one equipped). All state lives in SaveManager;
+ * this class just renders it.
  */
 
-import { HATS, SKINS, TRAILS } from "../world/cosmetics";
-import type { SaveManager } from "../save/SaveManager";
+import { AURAS, FACES, HATS, SKINS, TRAILS, type Rarity } from "../world/cosmetics";
+import type { CosmeticKind, SaveManager } from "../save/SaveManager";
 import type { SfxName } from "../audio/Sfx";
-
-type Kind = "skin" | "hat" | "trail";
 
 interface Item {
   id: string;
   name: string;
   price: number;
+  rarity: Rarity;
   swatch: string; // CSS background
 }
 
 const css = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
 
-const CATALOG: Record<Kind, Item[]> = {
+const FACE_SWATCHES: Record<string, string> = {
+  "face-classic": "🙂",
+  "face-happy": "😄",
+  "face-wink": "😉",
+  "face-wow": "😮",
+  "face-cool": "😎",
+};
+
+const CATALOG: Record<CosmeticKind, Item[]> = {
   skin: SKINS.map((s) => ({
     id: s.id,
     name: s.name,
     price: s.price,
+    rarity: s.rarity,
     swatch: `linear-gradient(${css(s.torso)} 55%, ${css(s.legs)} 45%)`,
   })),
-  hat: HATS.map((h) => ({ id: h.id, name: h.name, price: h.price, swatch: css(h.color) })),
+  hat: HATS.map((h) => ({ id: h.id, name: h.name, price: h.price, rarity: h.rarity, swatch: css(h.color) })),
   trail: TRAILS.map((t) => ({
     id: t.id,
     name: t.name,
     price: t.price,
+    rarity: t.rarity,
     swatch: `linear-gradient(90deg, ${t.colors.map(css).join(", ")})`,
+  })),
+  face: FACES.map((f) => ({ id: f.id, name: f.name, price: f.price, rarity: f.rarity, swatch: "face" })),
+  aura: AURAS.map((a) => ({
+    id: a.id,
+    name: a.name,
+    price: a.price,
+    rarity: a.rarity,
+    swatch: `radial-gradient(circle, ${a.colors.map(css).join(", ")})`,
   })),
 };
 
-const TAB_LABELS: Record<Kind, string> = { skin: "Skins", hat: "Hats", trail: "Trails" };
+const TAB_LABELS: Record<CosmeticKind, string> = {
+  skin: "Skins",
+  hat: "Hats",
+  trail: "Trails",
+  face: "Faces",
+  aura: "Auras",
+};
+
+const RARITY_LABELS: Record<Rarity, string> = {
+  common: "Common",
+  rare: "Rare ◆",
+  epic: "Epic ★",
+  legendary: "Legendary ✦",
+};
 
 export class Shop {
   private readonly overlay: HTMLElement;
   private readonly coinsEl: HTMLElement;
   private readonly grid: HTMLElement;
-  private readonly tabButtons = new Map<Kind, HTMLButtonElement>();
-  private activeTab: Kind = "skin";
+  private readonly tabButtons = new Map<CosmeticKind, HTMLButtonElement>();
+  private activeTab: CosmeticKind = "skin";
 
   constructor(
     ui: HTMLElement,
@@ -72,7 +103,7 @@ export class Shop {
 
     const tabs = document.createElement("div");
     tabs.className = "shop-tabs";
-    for (const kind of ["skin", "hat", "trail"] as Kind[]) {
+    for (const kind of ["skin", "hat", "trail", "face", "aura"] as CosmeticKind[]) {
       const btn = document.createElement("button");
       btn.textContent = TAB_LABELS[kind];
       btn.addEventListener("click", () => {
@@ -115,28 +146,33 @@ export class Shop {
     }
   }
 
-  private renderItem(kind: Kind, item: Item): HTMLElement {
+  private renderItem(kind: CosmeticKind, item: Item): HTMLElement {
     const card = document.createElement("div");
-    card.className = "shop-item";
+    card.className = `shop-item r-${item.rarity}`;
 
     const swatch = document.createElement("div");
     swatch.className = "swatch";
-    swatch.style.background = item.swatch;
+    if (item.swatch === "face") {
+      swatch.classList.add("swatch-emoji");
+      swatch.textContent = FACE_SWATCHES[item.id] ?? "🙂";
+    } else {
+      swatch.style.background = item.swatch;
+    }
 
     const name = document.createElement("span");
     name.textContent = item.name;
 
+    const rarity = document.createElement("span");
+    rarity.className = "rarity-label";
+    rarity.textContent = RARITY_LABELS[item.rarity];
+
     const btn = document.createElement("button");
-    const equippedId =
-      kind === "skin"
-        ? this.save.data.equipped.skin
-        : kind === "hat"
-          ? this.save.data.equipped.hat
-          : this.save.data.equipped.trail;
+    const equippedId = this.save.data.equipped[kind];
     const equipped = equippedId === item.id;
     const owned = this.save.owns(item.id) || item.price === 0;
+    const removable = kind === "hat" || kind === "trail" || kind === "aura";
 
-    if (equipped && kind === "skin") {
+    if (equipped && !removable) {
       btn.textContent = "Equipped";
       btn.className = "equipped";
       btn.disabled = true;
@@ -152,11 +188,11 @@ export class Shop {
       btn.addEventListener("click", () => this.buy(kind, item));
     }
 
-    card.append(swatch, name, btn);
+    card.append(swatch, name, rarity, btn);
     return card;
   }
 
-  private buy(kind: Kind, item: Item): void {
+  private buy(kind: CosmeticKind, item: Item): void {
     if (!this.save.spend(item.price)) {
       this.hooks.sfxPlay("denied");
       return;
@@ -168,7 +204,7 @@ export class Shop {
     this.render();
   }
 
-  private equip(kind: Kind, id: string | null): void {
+  private equip(kind: CosmeticKind, id: string | null): void {
     this.save.equip(kind, id);
     this.hooks.sfxPlay("click");
     this.hooks.onChanged();

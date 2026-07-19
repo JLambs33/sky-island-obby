@@ -17,6 +17,14 @@ export interface PieceHost {
   reachCheckpoint(pos: Vec3): void;
   bounce(power: number): void;
   completeCourse(): void;
+  /** Conveyor drift, units/sec, applied to the player next step. */
+  push(x: number, z: number): void;
+  /** Speed-pad boost: run-speed multiplier for a few seconds. */
+  boost(mult: number, seconds: number): void;
+  /** Wind-zone lift: accelerate the player upward toward `strength`. */
+  updraft(strength: number): void;
+  /** Teleporter pads: move the player instantly (camera snaps along). */
+  teleportPlayer(x: number, y: number, z: number): void;
 }
 
 /** Per-step player state passed to trigger checks. */
@@ -45,9 +53,10 @@ export interface GameHost {
   addCoins(n: number): void;
   toast(msg: string): void;
   sfxPlay(name: SfxName): void;
-  courseComplete(timeSec: number): void;
+  courseComplete(timeSec: number, coinsCollected: number, totalCoins: number): void;
   enterCourse(id: CourseId): void;
   openShop(): void;
+  openCustomizer(): void;
   /** The player was teleported back to a spawn point — snap the camera etc. */
   respawned(): void;
 }
